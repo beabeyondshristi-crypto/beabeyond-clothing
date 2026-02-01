@@ -8,6 +8,7 @@ export interface Product {
 }
 
 export const products: Product[] = [
+  // Existing Items
   {
     id: '1',
     name: 'Structured Cotton Shirt',
@@ -183,6 +184,161 @@ export const products: Product[] = [
       'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80'
     ],
     description: 'Breathable linen shorts with a drawstring waist.',
+  },
+  // NEW ITEMS
+  {
+    id: '17',
+    name: 'Silk Georgette Blouse',
+    price: 175,
+    category: 'Tops',
+    images: [
+       'https://images.unsplash.com/photo-1605763240004-7e93b172d754?auto=format&fit=crop&w=800&q=80',
+       'https://images.unsplash.com/photo-1551163943-3f6a29e3945f?auto=format&fit=crop&w=800&q=80'
+    ],
+    description: 'Sheer silk georgette blouse with a tie neck detail.',
+  },
+  {
+    id: '18',
+    name: 'Cigarette Trousers',
+    price: 140,
+    category: 'Bottoms',
+    images: [
+       'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?auto=format&fit=crop&w=800&q=80',
+       'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=800&q=80'
+    ],
+    description: 'Slim fit cigarette trousers in black wool crepe.',
+  },
+  {
+    id: '19',
+    name: 'Sculptural Gold Earrings',
+    price: 120,
+    category: 'Accessories',
+    images: [
+       'https://images.unsplash.com/photo-1630019852942-f89202989a51?auto=format&fit=crop&w=800&q=80',
+       'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=800&q=80'
+    ],
+    description: 'Abstract gold-plated earrings with a matte finish.',
+  },
+  {
+    id: '20',
+    name: 'Minimalist Watch',
+    price: 250,
+    category: 'Accessories',
+    images: [
+       'https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&w=800&q=80',
+       'https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?auto=format&fit=crop&w=800&q=80'
+    ],
+    description: 'Unisex watch with a white face and black leather strap.',
+  },
+  {
+    id: '21',
+    name: 'Basic White Tee',
+    price: 45,
+    category: 'Tops',
+    images: [
+       'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=800&q=80',
+       'https://images.unsplash.com/photo-1622445272461-c6580cab8755?auto=format&fit=crop&w=800&q=80'
+    ],
+    description: 'Premium heavyweight cotton t-shirt. The perfect staple.',
+  },
+  {
+    id: '22',
+    name: 'Leather Belt',
+    price: 75,
+    category: 'Accessories',
+    images: [
+       'https://images.unsplash.com/photo-1624222247344-550fb60583dc?auto=format&fit=crop&w=800&q=80',
+       'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=800&q=80'
+    ],
+    description: 'Full grain leather belt with a custom silver buckle.',
+  },
+  {
+    id: '23',
+    name: 'Wrap Coat',
+    price: 420,
+    category: 'Outerwear',
+    images: [
+       'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=800&q=80',
+       'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?auto=format&fit=crop&w=800&q=80'
+    ],
+    description: 'Luxurious camel wool wrap coat with a tie waist.',
+  },
+  {
+    id: '24',
+    name: 'Satin Midi Skirt',
+    price: 135,
+    category: 'Bottoms',
+    images: [
+       'https://images.unsplash.com/photo-1582142327305-1811d4319ac6?auto=format&fit=crop&w=800&q=80',
+       'https://images.unsplash.com/photo-1582142839970-2b9e04b60f65?auto=format&fit=crop&w=800&q=80'
+    ],
+    description: 'Fluid satin midi skirt in champagne color.',
+  },
+  {
+    id: '25',
+    name: 'Cat Eye Sunglasses',
+    price: 165,
+    category: 'Accessories',
+    images: [
+       'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=800&q=80',
+       'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=800&q=80'
+    ],
+    description: 'Sharp cat-eye silhouette sunglasses in acetate.',
+  },
+  {
+    id: '26',
+    name: 'Canvas Sneakers',
+    price: 85,
+    category: 'Footwear',
+    images: [
+       'https://images.unsplash.com/photo-1562183241-b937e95585b6?auto=format&fit=crop&w=800&q=80',
+       'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&w=800&q=80'
+    ],
+    description: 'Low top canvas sneakers in off-white.',
+  },
+  {
+    id: '27',
+    name: 'Leather Cardholder',
+    price: 55,
+    category: 'Accessories',
+    images: [
+       'https://images.unsplash.com/photo-1627123424574-18bd75f72680?auto=format&fit=crop&w=800&q=80',
+       'https://images.unsplash.com/photo-1606503825008-909a6184aeb6?auto=format&fit=crop&w=800&q=80'
+    ],
+    description: 'Minimalist leather cardholder with 4 slots.',
+  },
+  {
+    id: '28',
+    name: 'Puffer Jacket',
+    price: 290,
+    category: 'Outerwear',
+    images: [
+       'https://images.unsplash.com/photo-1545931847-51d94569e8cd?auto=format&fit=crop&w=800&q=80',
+       'https://images.unsplash.com/photo-1559551409-dadc959f76b8?auto=format&fit=crop&w=800&q=80'
+    ],
+    description: 'Oversized puffer jacket with high collar.',
+  },
+  {
+    id: '29',
+    name: 'Cotton Socks Set',
+    price: 35,
+    category: 'Accessories',
+    images: [
+       'https://images.unsplash.com/photo-1586350977771-b3b0abd50c82?auto=format&fit=crop&w=800&q=80',
+       'https://images.unsplash.com/photo-1606522510344-42cb41264c23?auto=format&fit=crop&w=800&q=80'
+    ],
+    description: 'Pack of 3 ribbed cotton socks in neutral tones.',
+  },
+  {
+    id: '30',
+    name: 'Evening Clutch',
+    price: 180,
+    category: 'Accessories',
+    images: [
+       'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=800&q=80',
+       'https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?auto=format&fit=crop&w=800&q=80'
+    ],
+    description: 'Velvet evening clutch with gold clasp.',
   }
 ];
 

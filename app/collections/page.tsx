@@ -15,7 +15,7 @@ export default function Collections() {
         <div className="grid grid-cols-1 md:grid-cols-3 border-b border-black">
           {collections.map((collection, index) => (
             <Link 
-                href={`/shop?collection=${collection.slug}`} 
+                href={`/collections/${collection.slug}`} 
                 key={collection.slug}
                 className={`group block relative aspect-[3/4] border-b md:border-b-0 ${index !== collections.length - 1 ? 'md:border-r border-black' : ''} overflow-hidden`}
             >

@@ -18,6 +18,7 @@ function ShopContent() {
   
   // Filters
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
   
   // Extract unique categories
@@ -26,10 +27,12 @@ function ShopContent() {
   // Initial load from URL
   useEffect(() => {
     const categoryParam = searchParams.get('category');
+    const collectionParam = searchParams.get('collection');
     const sortParam = searchParams.get('sort');
     const queryParam = searchParams.get('q');
     
     if (categoryParam) setSelectedCategory(categoryParam);
+    if (collectionParam) setSelectedCollection(collectionParam);
     if (sortParam) setSortOption(sortParam);
     
     // Filter logic
@@ -44,7 +47,22 @@ function ShopContent() {
       );
     }
 
-    // 2. Category
+    // 2. Collection
+    if (collectionParam) {
+      switch (collectionParam) {
+        case 'new-arrivals':
+          result = result.slice(0, 4); // Mock new arrivals
+          break;
+        case 'essentials':
+          result = result.filter(p => p.price < 100);
+          break;
+        case 'accessories':
+          result = result.filter(p => p.category === 'Accessories');
+          break;
+      }
+    }
+
+    // 3. Category
     if (categoryParam) {
        // Allow case-insensitive matching for URL params
        const catMatch = categories.find(c => c.toLowerCase() === categoryParam.toLowerCase());
@@ -60,13 +78,27 @@ function ShopContent() {
   // Apply Local Filters (Price, Sort, Category Click)
   useEffect(() => {
     let result = [...products];
-    const categoryParam = searchParams.get('category'); // Keep URL param priority if needed, or sync state
     const queryParam = searchParams.get('q');
 
     // Re-apply Search
     if (queryParam) {
         const q = queryParam.toLowerCase();
         result = result.filter(p => p.name.toLowerCase().includes(q));
+    }
+
+    // Apply Collection
+    if (selectedCollection) {
+      switch (selectedCollection) {
+        case 'new-arrivals':
+          result = result.slice(0, 4);
+          break;
+        case 'essentials':
+          result = result.filter(p => p.price < 100);
+          break;
+        case 'accessories':
+          result = result.filter(p => p.category === 'Accessories');
+          break;
+      }
     }
 
     // Apply Category State
@@ -93,7 +125,7 @@ function ShopContent() {
     }
 
     setFilteredProducts(result);
-  }, [selectedCategory, priceRange, sortOption, searchParams]);
+  }, [selectedCategory, selectedCollection, priceRange, sortOption, searchParams]);
 
   const toggleCategory = (cat: string) => {
     if (selectedCategory === cat) {
@@ -109,9 +141,17 @@ function ShopContent() {
 
   const clearFilters = () => {
     setSelectedCategory(null);
+    setSelectedCollection(null);
     setPriceRange([0, 500]);
     setSortOption('newest');
     router.push('/shop');
+  };
+
+  const getPageTitle = () => {
+    if (selectedCollection) {
+      return selectedCollection.replace('-', ' ');
+    }
+    return selectedCategory ? selectedCategory : 'All Products';
   };
 
   return (
@@ -126,7 +166,7 @@ function ShopContent() {
         >
            <span>Filters</span>
            <span className="bg-black text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px]">
-             {(selectedCategory ? 1 : 0) + (priceRange[0] > 0 || priceRange[1] < 500 ? 1 : 0)}
+             {(selectedCategory ? 1 : 0) + (selectedCollection ? 1 : 0) + (priceRange[0] > 0 || priceRange[1] < 500 ? 1 : 0)}
            </span>
         </button>
         <span className="text-[10px] text-gray-400 uppercase tracking-widest">{filteredProducts.length} Items</span>
@@ -237,7 +277,7 @@ function ShopContent() {
            {/* Desktop Sort Header */}
            <div className="hidden md:flex justify-between items-center p-8 md:p-12 border-b border-gray-100">
               <h1 className="text-2xl font-normal font-serif uppercase tracking-tighter">
-                 {selectedCategory ? selectedCategory : 'All Products'}
+                 {getPageTitle()}
               </h1>
               <div className="flex items-center gap-4">
                  <span className="text-[10px] text-gray-400 uppercase tracking-widest">{filteredProducts.length} Products</span>
