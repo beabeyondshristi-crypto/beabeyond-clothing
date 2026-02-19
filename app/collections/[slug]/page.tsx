@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, use } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -13,11 +13,10 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
   const { slug } = use(params);
   
   const collection = collections.find(c => c.slug === slug);
-  const [filteredProducts, setFilteredProducts] = useState(products);
   const [sortOption, setSortOption] = useState('newest');
 
-  // Filter Logic
-  useEffect(() => {
+  // Filter & Sort Logic (Computed during render)
+  const filteredProducts = (() => {
     let result = [...products];
 
     // Filter by Collection Rule
@@ -32,8 +31,6 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
         result = result.filter(p => p.category === 'Accessories');
         break;
       default:
-        // If it's a valid collection but has no specific logic defined, maybe show all or nothing?
-        // For now, let's just show all to avoid empty pages if we add more collections later without logic.
         break; 
     }
 
@@ -50,9 +47,8 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
         result.sort((a, b) => parseInt(b.id) - parseInt(a.id));
         break;
     }
-
-    setFilteredProducts(result);
-  }, [slug, sortOption]);
+    return result;
+  })();
 
   if (!collection) {
     notFound();
@@ -90,7 +86,7 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
             <div className="max-w-4xl mx-auto">
                 <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-gray-400 mb-6 block">The Philosophy</span>
                 <p className="text-2xl md:text-4xl font-serif leading-tight uppercase tracking-tight text-gray-900 mb-8">
-                  "Defined by sharp silhouettes, uncompromising monochrome palettes, and a dedication to functional luxury."
+                  &quot;Defined by sharp silhouettes, uncompromising monochrome palettes, and a dedication to functional luxury.&quot;
                 </p>
                 <div className="w-px h-16 bg-black mx-auto"></div>
             </div>
@@ -149,7 +145,7 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
                      The {collection.name}<br/>Edit.
                  </h2>
                  <p className="text-xs font-light uppercase tracking-widest leading-loose text-gray-500 mb-12 max-w-md">
-                     Discover the key pieces that define this season's {collection.name.toLowerCase()}. 
+                     Discover the key pieces that define this season&apos;s {collection.name.toLowerCase()}. 
                      Meticulously crafted for the modern wardrobe.
                  </p>
                  <Link 
@@ -184,7 +180,7 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
       </main>
 
       <footer className="py-12 px-6 md:px-12 bg-white border-t border-black text-center text-[9px] text-gray-400 uppercase tracking-[0.2em]">
-          © {new Date().getFullYear()} Beabeyond Retail Group.
+          &copy; {new Date().getFullYear()} Beabeyond Retail Group.
       </footer>
     </div>
   );

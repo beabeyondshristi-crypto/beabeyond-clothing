@@ -1,0 +1,1 @@
+rm -rf node_modules .next package-lock.json && npm installco

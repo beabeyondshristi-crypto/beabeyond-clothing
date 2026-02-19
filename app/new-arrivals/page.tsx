@@ -5,8 +5,7 @@ import ProductCard from '@/components/ProductCard';
 import { products } from '@/lib/data';
 
 export default function NewArrivals() {
-  // Simulate "New" products (first 6 for this demo)
-  const newProducts = products.slice(0, 6);
+  const newProducts = products.filter(p => p.isNewArrival);
 
   return (
     <div className="min-h-screen flex flex-col font-sans">

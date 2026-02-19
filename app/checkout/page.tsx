@@ -17,7 +17,7 @@ export default function CheckoutPage() {
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center">
         <h1 className="text-4xl md:text-6xl font-serif font-normal uppercase mb-6">Cart is Empty</h1>
         <p className="text-sm font-light uppercase tracking-widest mb-8 text-gray-500">
-          You haven't added any items yet.
+          You haven&apos;t added any items yet.
         </p>
         <Link 
           href="/shop" 

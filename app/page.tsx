@@ -9,7 +9,6 @@ import HeroSlider from '@/components/HeroSlider';
 export default function Home() {
   const newArrivals = products.slice(0, 4);
   const trending = products.slice(4, 8);
-  const essentials = products.slice(8, 12);
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
