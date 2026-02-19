@@ -54,52 +54,58 @@ export default function CartDrawer() {
               </Link>
             </div>
           ) : (
-            cart.map((item) => (
-              <div key={item.id} className="flex gap-4">
-                <div className="relative w-24 h-32 bg-gray-50 flex-shrink-0">
-                  <Image
-                    src={item.images[0]}
-                    alt={item.name}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
-                </div>
-                <div className="flex flex-col justify-between py-1 flex-grow">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <h3 className="text-[11px] font-bold uppercase tracking-widest">{item.name}</h3>
-                      <button 
-                        onClick={() => removeFromCart(item.id)}
-                        className="text-[9px] uppercase tracking-widest text-gray-400 hover:text-black"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1">{item.category}</p>
+            cart.map((item) => {
+              const cartItemId = `${item.id}-${item.selectedSize}-${item.selectedColor}`;
+              return (
+                <div key={cartItemId} className="flex gap-4">
+                  <div className="relative w-24 h-32 bg-gray-50 flex-shrink-0">
+                    <Image
+                      src={item.images[0]}
+                      alt={item.name}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
                   </div>
-                  
-                  <div className="flex justify-between items-end">
-                    <div className="flex items-center border border-gray-200">
-                      <button 
-                        onClick={() => updateQuantity(item.id, -1)}
-                        className="px-3 py-1 hover:bg-gray-50 transition-colors"
-                      >
-                        -
-                      </button>
-                      <span className="px-2 text-[11px] min-w-[20px] text-center">{item.quantity}</span>
-                      <button 
-                        onClick={() => updateQuantity(item.id, 1)}
-                        className="px-3 py-1 hover:bg-gray-50 transition-colors"
-                      >
-                        +
-                      </button>
+                  <div className="flex flex-col justify-between py-1 flex-grow">
+                    <div>
+                      <div className="flex justify-between items-start">
+                        <h3 className="text-[11px] font-bold uppercase tracking-widest">{item.name}</h3>
+                        <button 
+                          onClick={() => removeFromCart(cartItemId)}
+                          className="text-[9px] uppercase tracking-widest text-gray-400 hover:text-black"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1">{item.category}</p>
+                      <p className="text-[9px] text-gray-500 uppercase tracking-widest mt-2">
+                        Size: {item.selectedSize} / Color: {item.selectedColor}
+                      </p>
                     </div>
-                    <p className="text-xs font-medium">${item.price * item.quantity}</p>
+                    
+                    <div className="flex justify-between items-end">
+                      <div className="flex items-center border border-gray-200">
+                        <button 
+                          onClick={() => updateQuantity(cartItemId, -1)}
+                          className="px-3 py-1 hover:bg-gray-50 transition-colors"
+                        >
+                          -
+                        </button>
+                        <span className="px-2 text-[11px] min-w-[20px] text-center">{item.quantity}</span>
+                        <button 
+                          onClick={() => updateQuantity(cartItemId, 1)}
+                          className="px-3 py-1 hover:bg-gray-50 transition-colors"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <p className="text-xs font-medium">${item.price * item.quantity}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 

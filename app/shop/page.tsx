@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import ProductCard from '@/components/ProductCard';
@@ -11,32 +11,27 @@ function ShopContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
-  // State
-  const [filteredProducts, setFilteredProducts] = useState(products);
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [sortOption, setSortOption] = useState('newest');
-  
-  // Filters
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
-  
   // Extract unique categories
   const categories = Array.from(new Set(products.map(p => p.category)));
 
-  // Initial load from URL
-  useEffect(() => {
-    const categoryParam = searchParams.get('category');
-    const collectionParam = searchParams.get('collection');
-    const sortParam = searchParams.get('sort');
-    const queryParam = searchParams.get('q');
-    
-    if (categoryParam) setSelectedCategory(categoryParam);
-    if (collectionParam) setSelectedCollection(collectionParam);
-    if (sortParam) setSortOption(sortParam);
-    
-    // Filter logic
+  // State for interactive UI and basic filter selections
+  // Sync initial state from URL directly in initializers
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [sortOption, setSortOption] = useState(() => searchParams.get('sort') || 'newest');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(() => {
+    const param = searchParams.get('category');
+    if (param) {
+      return categories.find(c => c.toLowerCase() === param.toLowerCase()) || null;
+    }
+    return null;
+  });
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(() => searchParams.get('collection'));
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
+  
+  // Compute filtered products during render
+  const filteredProducts = (() => {
     let result = [...products];
+    const queryParam = searchParams.get('q');
 
     // 1. Text Search
     if (queryParam) {
@@ -48,47 +43,9 @@ function ShopContent() {
     }
 
     // 2. Collection
-    if (collectionParam) {
-      switch (collectionParam) {
-        case 'new-arrivals':
-          result = result.slice(0, 4); // Mock new arrivals
-          break;
-        case 'essentials':
-          result = result.filter(p => p.price < 100);
-          break;
-        case 'accessories':
-          result = result.filter(p => p.category === 'Accessories');
-          break;
-      }
-    }
-
-    // 3. Category
-    if (categoryParam) {
-       // Allow case-insensitive matching for URL params
-       const catMatch = categories.find(c => c.toLowerCase() === categoryParam.toLowerCase());
-       if (catMatch) {
-         setSelectedCategory(catMatch);
-         result = result.filter(p => p.category === catMatch);
-       }
-    }
-
-    setFilteredProducts(result);
-  }, [searchParams]);
-
-  // Apply Local Filters (Price, Sort, Category Click)
-  useEffect(() => {
-    let result = [...products];
-    const queryParam = searchParams.get('q');
-
-    // Re-apply Search
-    if (queryParam) {
-        const q = queryParam.toLowerCase();
-        result = result.filter(p => p.name.toLowerCase().includes(q));
-    }
-
-    // Apply Collection
-    if (selectedCollection) {
-      switch (selectedCollection) {
+    const activeCollection = selectedCollection;
+    if (activeCollection) {
+      switch (activeCollection) {
         case 'new-arrivals':
           result = result.slice(0, 4);
           break;
@@ -101,15 +58,15 @@ function ShopContent() {
       }
     }
 
-    // Apply Category State
+    // 3. Category
     if (selectedCategory) {
       result = result.filter(p => p.category === selectedCategory);
     }
 
-    // Apply Price
+    // 4. Price
     result = result.filter(p => p.price >= priceRange[0] && p.price <= priceRange[1]);
 
-    // Apply Sort
+    // 5. Apply Sort
     switch (sortOption) {
       case 'price-asc':
         result.sort((a, b) => a.price - b.price);
@@ -119,18 +76,16 @@ function ShopContent() {
         break;
       case 'newest':
       default:
-        // Mock "newest" by ID or original order
         result.sort((a, b) => parseInt(b.id) - parseInt(a.id));
         break;
     }
 
-    setFilteredProducts(result);
-  }, [selectedCategory, selectedCollection, priceRange, sortOption, searchParams]);
+    return result;
+  })();
 
   const toggleCategory = (cat: string) => {
     if (selectedCategory === cat) {
       setSelectedCategory(null);
-      // Remove param from URL shallowly
       const params = new URLSearchParams(searchParams.toString());
       params.delete('category');
       router.push(`/shop?${params.toString()}`);
