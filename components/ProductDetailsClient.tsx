@@ -10,7 +10,8 @@ import ProductReviews from './ProductReviews';
 
 export default function ProductDetailsClient({ product }: { product: Product }) {
   const { addToCart } = useCart();
-  const [selectedSize, setSelectedSize] = useState('M');
+  const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] || 'M');
+  const [selectedColor, setSelectedColor] = useState(product.colors?.[0] || '');
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(product.images[0]);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
@@ -82,22 +83,44 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
           </div>
 
           <div className="space-y-8">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest block mb-4">Select Size</span>
-              <div className="grid grid-cols-4 gap-4">
-                 {['S', 'M', 'L', 'XL'].map((size) => (
-                   <button
-                     key={size}
-                     onClick={() => setSelectedSize(size)}
-                     className={`border py-3 text-[10px] font-bold transition-colors uppercase tracking-widest ${
-                       selectedSize === size ? 'bg-black text-white border-black' : 'border-gray-200 hover:border-black'
-                     }`}
-                   >
-                     {size}
-                   </button>
-                 ))}
+            {product.colors && product.colors.length > 0 && (
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest block mb-4">Color — <span className="text-gray-400">{selectedColor}</span></span>
+                <div className="flex gap-3">
+                  {product.colors.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setSelectedColor(color)}
+                      className={`w-10 h-10 rounded-full border-2 transition-all ${
+                        selectedColor === color ? 'border-black scale-110' : 'border-gray-200 hover:border-gray-400'
+                      }`}
+                      style={{ backgroundColor: color.toLowerCase() === 'white' || color.toLowerCase() === 'ivory' || color.toLowerCase() === 'cream' || color.toLowerCase() === 'natural' ? '#f5f5f0' : color.toLowerCase() === 'black' ? '#000' : color.toLowerCase() === 'navy' ? '#000080' : color.toLowerCase() === 'charcoal' ? '#36454F' : color.toLowerCase() === 'tan' ? '#D2B48C' : color.toLowerCase() === 'grey' || color.toLowerCase() === 'gray' ? '#808080' : color.toLowerCase() === 'slate' ? '#708090' : undefined }}
+                      title={color}
+                    />
+                  ))}
+                </div>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-2">{selectedColor}</p>
               </div>
-            </div>
+            )}
+
+            {product.sizes && product.sizes.length > 0 && (
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest block mb-4">Select Size</span>
+                <div className="flex flex-wrap gap-3">
+                  {product.sizes.map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedSize(size)}
+                      className={`border py-3 px-6 text-[10px] font-bold transition-colors uppercase tracking-widest ${
+                        selectedSize === size ? 'bg-black text-white border-black' : 'border-gray-200 hover:border-black'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div>
               <span className="text-[10px] font-bold uppercase tracking-widest block mb-4">Quantity</span>
@@ -119,7 +142,7 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
             </div>
 
             <button
-              onClick={() => addToCart(product, quantity)}
+              onClick={() => addToCart(product, quantity, { size: selectedSize, color: selectedColor })}
               className="w-full bg-black text-white py-5 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-800 transition-colors"
             >
               Add to Bag
