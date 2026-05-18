@@ -1,23 +1,32 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '@/components/Navbar';
-import { collections } from '@/lib/data';
+import { createClient } from '@/lib/supabase/server';
 
-export default function Collections() {
+export default async function Collections() {
+  const supabase = await createClient();
+
+  const [{ data: collections }, { data: heroSections }] = await Promise.all([
+    supabase.from('collections').select('*').order('name'),
+    supabase.from('homepage_sections').select('*').eq('page', 'collections').eq('is_visible', true).eq('section_type', 'hero').order('sort_order').limit(1),
+  ]);
+
+  const hero = (heroSections || [])[0] || null;
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-grow">
         <div className="border-b border-black py-16 px-6 md:px-12">
-            <h1 className="text-6xl font-bold uppercase tracking-tighter">Collections</h1>
+            <h1 className="text-6xl font-bold uppercase tracking-tighter">{hero?.title || 'Collections'}</h1>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 border-b border-black">
-          {collections.map((collection, index) => (
+          {(collections || []).map((collection, index, arr) => (
             <Link 
                 href={`/shop?collection=${collection.slug}`} 
                 key={collection.slug}
-                className={`group block relative aspect-[3/4] border-b md:border-b-0 ${index !== collections.length - 1 ? 'md:border-r border-black' : ''} overflow-hidden`}
+                className={`group block relative aspect-[3/4] border-b md:border-b-0 ${index !== arr.length - 1 ? 'md:border-r border-black' : ''} overflow-hidden`}
             >
                 <Image
                   src={collection.image}

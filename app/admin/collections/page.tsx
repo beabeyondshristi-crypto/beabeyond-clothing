@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type { Collection } from '@/lib/types';
+import { useEffect, useState, useCallback } from 'react';
+import type { Collection, Product } from '@/lib/types';
 
 export default function AdminCollections() {
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -9,6 +9,13 @@ export default function AdminCollections() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', slug: '', image: '', description: '' });
+
+  // Manage products state
+  const [manageCollection, setManageCollection] = useState<Collection | null>(null);
+  const [collectionProducts, setCollectionProducts] = useState<Product[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [searching, setSearching] = useState(false);
 
   const fetchCollections = async () => {
     try {
@@ -74,6 +81,75 @@ export default function AdminCollections() {
     }
   };
 
+  const openManageProducts = async (collection: Collection) => {
+    setManageCollection(collection);
+    setSearchQuery('');
+    setSearchResults([]);
+    try {
+      const res = await fetch(`/api/admin/collections/${collection.id}/products`);
+      const data = await res.json();
+      if (Array.isArray(data)) setCollectionProducts(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const closeManageProducts = () => {
+    setManageCollection(null);
+    setCollectionProducts([]);
+  };
+
+  const searchProducts = useCallback(async (q: string) => {
+    if (!q.trim()) { setSearchResults([]); return; }
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/products?search=${encodeURIComponent(q)}&limit=20`);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setSearchResults(data.filter((p: Product) => !collectionProducts.some(cp => cp.id === p.id)));
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSearching(false);
+    }
+  }, [collectionProducts]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => searchProducts(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, searchProducts]);
+
+  const addProduct = async (productId: string) => {
+    if (!manageCollection) return;
+    try {
+      const res = await fetch(`/api/admin/collections/${manageCollection.id}/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id: productId }),
+      });
+      if (!res.ok) throw new Error('Failed to add');
+      setSearchResults(prev => prev.filter(p => p.id !== productId));
+      const added = searchResults.find(p => p.id === productId) || await (await fetch(`/api/products/${productId}`)).json();
+      setCollectionProducts(prev => [...prev, added]);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const removeProduct = async (productId: string) => {
+    if (!manageCollection) return;
+    try {
+      const res = await fetch(`/api/admin/collections/${manageCollection.id}/products?product_id=${productId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to remove');
+      setCollectionProducts(prev => prev.filter(p => p.id !== productId));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -109,16 +185,22 @@ export default function AdminCollections() {
                 {collection.image && (
                   <img src={collection.image} alt={collection.name} className="object-cover w-full h-full grayscale group-hover:grayscale-0 transition-all duration-700" />
                 )}
-                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                   <button
                     onClick={() => openForm(collection)}
-                    className="bg-white text-black px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-gray-100"
+                    className="bg-white text-black px-3 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-gray-100"
                   >
                     Edit
                   </button>
                   <button
+                    onClick={() => openManageProducts(collection)}
+                    className="bg-white text-black px-3 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-gray-100"
+                  >
+                    Products
+                  </button>
+                  <button
                     onClick={() => handleDelete(collection.id)}
-                    className="bg-red-500 text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-red-600"
+                    className="bg-red-500 text-white px-3 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-red-600"
                   >
                     Delete
                   </button>
@@ -190,12 +272,91 @@ export default function AdminCollections() {
                 />
               </div>
 
+              {editingId && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const col = collections.find(c => c.id === editingId);
+                      if (col) openManageProducts(col);
+                    }}
+                    className="w-full border border-black py-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-black hover:text-white transition-colors"
+                  >
+                    Manage Products in Collection
+                  </button>
+                </div>
+              )}
               <div className="pt-12">
                 <button type="submit" className="w-full bg-black text-white py-5 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-800 transition-colors">
                   {editingId ? 'Update Collection' : 'Create Collection'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {manageCollection && (
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={closeManageProducts} />
+          <div className="relative w-full max-w-lg bg-white h-full shadow-2xl p-12 flex flex-col">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h2 className="text-2xl font-serif uppercase tracking-tighter">{manageCollection.name}</h2>
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Manage Products</p>
+              </div>
+              <button onClick={closeManageProducts} className="text-2xl font-light">✕</button>
+            </div>
+
+            <div className="mb-6">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full border border-black/20 px-4 py-3 text-sm focus:outline-none focus:border-black"
+                placeholder="Search products to add..."
+              />
+              {searching && <p className="text-[10px] text-gray-400 mt-1">Searching...</p>}
+              {searchResults.length > 0 && (
+                <div className="mt-2 border border-black/10 max-h-60 overflow-y-auto">
+                  {searchResults.map((p) => (
+                    <div key={p.id} className="flex justify-between items-center px-4 py-2 border-b border-black/5 hover:bg-gray-50">
+                      <span className="text-sm truncate">{p.name}</span>
+                      <button
+                        onClick={() => addProduct(p.id)}
+                        className="text-[10px] font-bold uppercase tracking-widest text-green-700 hover:text-green-900 shrink-0 ml-4"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Current Products ({collectionProducts.length})</h3>
+              {collectionProducts.length === 0 ? (
+                <p className="text-[10px] text-gray-300 uppercase tracking-widest">No products assigned yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {collectionProducts.map((p) => (
+                    <div key={p.id} className="flex justify-between items-center px-4 py-2 bg-gray-50 border border-black/5">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm truncate">{p.name}</p>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider">{p.category} — ${p.price}</p>
+                      </div>
+                      <button
+                        onClick={() => removeProduct(p.id)}
+                        className="text-[10px] font-bold uppercase tracking-widest text-red-600 hover:text-red-800 shrink-0 ml-4"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -93,7 +93,8 @@ export interface AdminUser {
 
 export interface HomepageSection {
   id: string;
-  section_type: 'hero_slide' | 'editorial' | 'category_spotlight' | 'newsletter';
+  page: string;
+  section_type: 'hero_slide' | 'editorial' | 'category_spotlight' | 'newsletter' | 'hero' | 'content' | 'feature';
   title: string;
   subtitle: string;
   description: string;

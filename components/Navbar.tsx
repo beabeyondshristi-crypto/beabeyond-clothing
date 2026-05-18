@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { products } from '@/lib/data';
+import type { Product } from '@/lib/data';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import CartDrawer from './CartDrawer';
@@ -12,7 +12,8 @@ export default function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<typeof products>([]);
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const searchTimer = useRef<number>(0);
   const router = useRouter();
   const { setIsCartOpen, cartCount } = useCart();
 
@@ -29,11 +30,17 @@ export default function Navbar() {
       setSearchResults([]);
       return;
     }
-    const results = products.filter(p => 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      p.category.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setSearchResults(results.slice(0, 6)); // Show top 6 results
+    window.clearTimeout(searchTimer.current);
+    searchTimer.current = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/products?search=${encodeURIComponent(searchQuery)}&limit=6`);
+        const data = await res.json();
+        if (Array.isArray(data)) setSearchResults(data);
+      } catch (e) {
+        console.error('Search failed', e);
+      }
+    }, 300);
+    return () => window.clearTimeout(searchTimer.current);
   }, [searchQuery]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {

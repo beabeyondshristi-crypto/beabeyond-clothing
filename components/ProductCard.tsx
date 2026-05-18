@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Product } from '@/lib/data';
+import type { Product } from '@/lib/data';
 import { useCart } from '@/context/CartContext';
 
 interface ProductCardProps {

@@ -3,14 +3,14 @@ import Image from 'next/image';
 import Navbar from '@/components/Navbar';
 import ProductCard from '@/components/ProductCard';
 import HeroSlider from '@/components/HeroSlider';
-import { products } from '@/lib/data';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function Home() {
-  const newArrivals = products.slice(0, 4);
-  const trending = products.slice(4, 8);
-
   const supabase = await createClient();
+
+  const { data: allProducts } = await supabase.from('products').select('*').order('created_at', { ascending: false }).limit(8);
+  const newArrivals = (allProducts || []).slice(0, 4);
+  const trending = (allProducts || []).slice(4, 8);
   const { data: sections } = await supabase
     .from('homepage_sections')
     .select('*')
