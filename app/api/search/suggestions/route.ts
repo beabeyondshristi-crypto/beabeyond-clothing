@@ -7,20 +7,22 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get('q') || '';
 
-    if (!q.trim()) return NextResponse.json({ categories: [], colors: [], collections: [], products: [] });
+    if (!q.trim()) {
+      const { data } = await supabase.from('products').select('*').limit(8).order('created_at', { ascending: false });
+      return NextResponse.json({ categories: [], colors: [], collections: [], products: data || [] });
+    }
 
     const like = `%${q}%`;
 
     const [catRes, prodRes, colRes] = await Promise.all([
       supabase.from('products').select('category').ilike('category', like).limit(5),
-      supabase.from('products').select('*, collections!collection_products(name, slug)').or(`name.ilike.${like},category.ilike.${like}`).limit(5),
+      supabase.from('products').select('*').or(`name.ilike.${like},category.ilike.${like}`).limit(5),
       supabase.from('collections').select('name, slug').ilike('name', like).limit(5),
     ]);
 
     const categories = [...new Set((catRes.data || []).map(r => r.category))];
     const products = prodRes.data || [];
 
-    // Extract matching colors from products
     const colorSet = new Set<string>();
     for (const p of products) {
       for (const c of (p.colors || [])) {
@@ -28,14 +30,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      categories,
-      colors: [...colorSet],
-      collections: colRes.data || [],
-      products,
-    });
+    return NextResponse.json({ categories, colors: [...colorSet], collections: colRes.data || [], products });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ categories: [], colors: [], collections: [], products: [] });
   }
 }
