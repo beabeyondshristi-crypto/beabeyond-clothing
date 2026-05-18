@@ -10,8 +10,7 @@ import ProductReviews from './ProductReviews';
 
 export default function ProductDetailsClient({ product }: { product: Product }) {
   const { addToCart } = useCart();
-  const [selectedSize, setSelectedSize] = useState(product.sizes[0] || 'M');
-  const [selectedColor, setSelectedColor] = useState(product.colors[0] || '');
+  const [selectedSize, setSelectedSize] = useState('M');
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(product.images[0]);
 
@@ -64,53 +63,20 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
              <Link href="/shop" className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 hover:text-black mb-8 inline-block">
                ← Back to Shop
              </Link>
-             <div className="flex justify-between items-baseline mb-4">
-                <h1 className="text-4xl md:text-5xl font-normal font-serif uppercase tracking-tighter leading-tight">
-                  {product.name}
-                </h1>
-                <p className="text-xl font-light">${product.price}</p>
-             </div>
-             
-             <div className="flex flex-col gap-2 mb-8 text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                <div className="flex gap-2">
-                   <span>Category:</span>
-                   <span className="text-black">{product.category}</span>
-                </div>
-                <div className="flex gap-2">
-                   <span>Fabric:</span>
-                   <span className="text-black">{product.fabric}</span>
-                </div>
-             </div>
-
+             <h1 className="text-4xl md:text-5xl font-normal font-serif uppercase tracking-tighter mb-4 leading-tight">
+               {product.name}
+             </h1>
+             <p className="text-xl font-light mb-8">${product.price}</p>
              <div className="prose prose-sm max-w-none text-gray-500 mb-12 uppercase text-[10px] tracking-widest leading-loose font-light">
                <p>{product.description}</p>
              </div>
           </div>
 
           <div className="space-y-8">
-            {/* Color Selection */}
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest block mb-4">Select Color</span>
-              <div className="flex flex-wrap gap-2">
-                 {product.colors.map((color) => (
-                   <button 
-                     key={color}
-                     onClick={() => setSelectedColor(color)}
-                     className={`border px-6 py-3 text-[10px] font-bold transition-colors uppercase tracking-widest ${
-                       selectedColor === color ? 'bg-black text-white border-black' : 'border-gray-200 hover:border-black'
-                     }`}
-                   >
-                     {color}
-                   </button>
-                 ))}
-              </div>
-            </div>
-
-            {/* Size Selection */}
             <div>
               <span className="text-[10px] font-bold uppercase tracking-widest block mb-4">Select Size</span>
-              <div className="grid grid-cols-4 lg:grid-cols-7 gap-2">
-                 {product.sizes.map((size) => (
+              <div className="grid grid-cols-4 gap-4">
+                 {['S', 'M', 'L', 'XL'].map((size) => (
                    <button 
                      key={size}
                      onClick={() => setSelectedSize(size)}
@@ -124,33 +90,31 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
               </div>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-4 items-end">
-                <div className="w-full md:w-max">
-                    <span className="text-[10px] font-bold uppercase tracking-widest block mb-4">Quantity</span>
-                    <div className="flex items-center border border-gray-200 w-full md:w-max justify-between">
-                        <button 
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))} 
-                        className="px-4 py-3 hover:bg-gray-50 text-gray-500"
-                        >
-                        -
-                        </button>
-                        <span className="px-4 py-3 text-sm font-medium border-x border-gray-200 min-w-[3rem] text-center">{quantity}</span>
-                        <button 
-                        onClick={() => setQuantity(quantity + 1)} 
-                        className="px-4 py-3 hover:bg-gray-50 text-gray-500"
-                        >
-                        +
-                        </button>
-                    </div>
-                </div>
-                
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-widest block mb-4">Quantity</span>
+              <div className="flex items-center border border-gray-200 w-max">
                 <button 
-                onClick={() => addToCart(product, quantity, selectedSize, selectedColor)}
-                className="flex-grow bg-black text-white py-4 px-8 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-800 transition-colors border border-black"
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))} 
+                  className="px-4 py-3 hover:bg-gray-50 text-gray-500"
                 >
-                Add to Bag
+                  -
                 </button>
+                <span className="px-4 py-3 text-sm font-medium border-x border-gray-200 min-w-[3rem] text-center">{quantity}</span>
+                <button 
+                  onClick={() => setQuantity(quantity + 1)} 
+                  className="px-4 py-3 hover:bg-gray-50 text-gray-500"
+                >
+                  +
+                </button>
+              </div>
             </div>
+            
+            <button 
+              onClick={() => addToCart(product, quantity)}
+              className="w-full bg-black text-white py-5 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-800 transition-colors"
+            >
+              Add to Bag
+            </button>
             
              <div className="pt-8 border-t border-gray-100">
                 <div className="flex justify-between text-[9px] uppercase tracking-[0.2em] text-gray-400 font-bold">
@@ -164,7 +128,7 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (
-        <section className="px-8 md:px-16 lg:px-24 py-20 border-t border-black bg-white">
+        <section className="px-8 md:px-16 lg:px-24 py-20 border-t border-gray-100 bg-white">
           <h2 className="text-2xl font-serif mb-12 text-center uppercase tracking-widest">You May Also Like</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-12">
             {relatedProducts.map((p) => (

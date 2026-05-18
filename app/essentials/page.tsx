@@ -5,7 +5,9 @@ import ProductCard from '@/components/ProductCard';
 import { products } from '@/lib/data';
 
 export default function Essentials() {
-  const essentialProducts = products.filter(p => p.isEssential); 
+  // Filter for specific "Essential" looking items for this demo
+  // In a real app, this would query by category="Essentials"
+  const essentialProducts = products.filter((p, i) => [0, 1, 5, 6, 8, 10].includes(i)); 
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
@@ -22,7 +24,7 @@ export default function Essentials() {
                         Wardrobe<br/>Foundation.
                     </h1>
                     <p className="text-xs md:text-sm font-light leading-relaxed text-gray-600 mb-8 max-w-sm">
-                        Trends fade, but essentials remain. Discover the pieces you&apos;ll reach for every single day. 
+                        Trends fade, but essentials remain. Discover the pieces you'll reach for every single day. 
                         Impeccable tailoring, premium fabrics, and neutral tones designed to be mixed and matched.
                     </p>
                     <Link href="/shop" className="text-[10px] font-bold uppercase tracking-[0.2em] border-b border-black pb-1 hover:opacity-50 inline-block">
@@ -67,7 +69,7 @@ export default function Essentials() {
       </main>
       
       <footer className="py-12 px-6 md:px-12 bg-white border-t border-black text-center text-[9px] text-gray-400 uppercase tracking-[0.2em]">
-          &copy; {new Date().getFullYear()} Beabeyond Retail Group.
+          © {new Date().getFullYear()} Beabeyond Retail Group.
       </footer>
     </div>
   );

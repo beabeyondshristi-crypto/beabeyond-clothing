@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import ProductCard from '@/components/ProductCard';
@@ -11,27 +11,29 @@ function ShopContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
+  // State
+  const [filteredProducts, setFilteredProducts] = useState(products);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [sortOption, setSortOption] = useState('newest');
+  
+  // Filters
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
+  
   // Extract unique categories
   const categories = Array.from(new Set(products.map(p => p.category)));
 
-  // State for interactive UI and basic filter selections
-  // Sync initial state from URL directly in initializers
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [sortOption, setSortOption] = useState(() => searchParams.get('sort') || 'newest');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(() => {
-    const param = searchParams.get('category');
-    if (param) {
-      return categories.find(c => c.toLowerCase() === param.toLowerCase()) || null;
-    }
-    return null;
-  });
-  const [selectedCollection, setSelectedCollection] = useState<string | null>(() => searchParams.get('collection'));
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
-  
-  // Compute filtered products during render
-  const filteredProducts = (() => {
-    let result = [...products];
+  // Initial load from URL
+  useEffect(() => {
+    const categoryParam = searchParams.get('category');
+    const sortParam = searchParams.get('sort');
     const queryParam = searchParams.get('q');
+    
+    if (categoryParam) setSelectedCategory(categoryParam);
+    if (sortParam) setSortOption(sortParam);
+    
+    // Filter logic
+    let result = [...products];
 
     // 1. Text Search
     if (queryParam) {
@@ -42,31 +44,40 @@ function ShopContent() {
       );
     }
 
-    // 2. Collection
-    const activeCollection = selectedCollection;
-    if (activeCollection) {
-      switch (activeCollection) {
-        case 'new-arrivals':
-          result = result.slice(0, 4);
-          break;
-        case 'essentials':
-          result = result.filter(p => p.price < 100);
-          break;
-        case 'accessories':
-          result = result.filter(p => p.category === 'Accessories');
-          break;
-      }
+    // 2. Category
+    if (categoryParam) {
+       // Allow case-insensitive matching for URL params
+       const catMatch = categories.find(c => c.toLowerCase() === categoryParam.toLowerCase());
+       if (catMatch) {
+         setSelectedCategory(catMatch);
+         result = result.filter(p => p.category === catMatch);
+       }
     }
 
-    // 3. Category
+    setFilteredProducts(result);
+  }, [searchParams]);
+
+  // Apply Local Filters (Price, Sort, Category Click)
+  useEffect(() => {
+    let result = [...products];
+    const categoryParam = searchParams.get('category'); // Keep URL param priority if needed, or sync state
+    const queryParam = searchParams.get('q');
+
+    // Re-apply Search
+    if (queryParam) {
+        const q = queryParam.toLowerCase();
+        result = result.filter(p => p.name.toLowerCase().includes(q));
+    }
+
+    // Apply Category State
     if (selectedCategory) {
       result = result.filter(p => p.category === selectedCategory);
     }
 
-    // 4. Price
+    // Apply Price
     result = result.filter(p => p.price >= priceRange[0] && p.price <= priceRange[1]);
 
-    // 5. Apply Sort
+    // Apply Sort
     switch (sortOption) {
       case 'price-asc':
         result.sort((a, b) => a.price - b.price);
@@ -76,16 +87,18 @@ function ShopContent() {
         break;
       case 'newest':
       default:
+        // Mock "newest" by ID or original order
         result.sort((a, b) => parseInt(b.id) - parseInt(a.id));
         break;
     }
 
-    return result;
-  })();
+    setFilteredProducts(result);
+  }, [selectedCategory, priceRange, sortOption, searchParams]);
 
   const toggleCategory = (cat: string) => {
     if (selectedCategory === cat) {
       setSelectedCategory(null);
+      // Remove param from URL shallowly
       const params = new URLSearchParams(searchParams.toString());
       params.delete('category');
       router.push(`/shop?${params.toString()}`);
@@ -96,17 +109,9 @@ function ShopContent() {
 
   const clearFilters = () => {
     setSelectedCategory(null);
-    setSelectedCollection(null);
     setPriceRange([0, 500]);
     setSortOption('newest');
     router.push('/shop');
-  };
-
-  const getPageTitle = () => {
-    if (selectedCollection) {
-      return selectedCollection.replace('-', ' ');
-    }
-    return selectedCategory ? selectedCategory : 'All Products';
   };
 
   return (
@@ -121,7 +126,7 @@ function ShopContent() {
         >
            <span>Filters</span>
            <span className="bg-black text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px]">
-             {(selectedCategory ? 1 : 0) + (selectedCollection ? 1 : 0) + (priceRange[0] > 0 || priceRange[1] < 500 ? 1 : 0)}
+             {(selectedCategory ? 1 : 0) + (priceRange[0] > 0 || priceRange[1] < 500 ? 1 : 0)}
            </span>
         </button>
         <span className="text-[10px] text-gray-400 uppercase tracking-widest">{filteredProducts.length} Items</span>
@@ -232,7 +237,7 @@ function ShopContent() {
            {/* Desktop Sort Header */}
            <div className="hidden md:flex justify-between items-center p-8 md:p-12 border-b border-gray-100">
               <h1 className="text-2xl font-normal font-serif uppercase tracking-tighter">
-                 {getPageTitle()}
+                 {selectedCategory ? selectedCategory : 'All Products'}
               </h1>
               <div className="flex items-center gap-4">
                  <span className="text-[10px] text-gray-400 uppercase tracking-widest">{filteredProducts.length} Products</span>

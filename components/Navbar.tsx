@@ -12,6 +12,7 @@ export default function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<typeof products>([]);
   const router = useRouter();
   const { setIsCartOpen, cartCount } = useCart();
 
@@ -23,13 +24,17 @@ export default function Navbar() {
     }
   }, [isSearchOpen, isMobileMenuOpen]);
 
-  // Compute search results during render
-  const searchResults = searchQuery.trim() === '' 
-    ? [] 
-    : products.filter(p => 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        p.category.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 6);
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setSearchResults([]);
+      return;
+    }
+    const results = products.filter(p => 
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      p.category.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setSearchResults(results.slice(0, 6)); // Show top 6 results
+  }, [searchQuery]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
