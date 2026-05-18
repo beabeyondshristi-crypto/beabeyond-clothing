@@ -148,103 +148,113 @@ export default function Navbar() {
                )}
              </form>
 
-             {/* Suggestions Dropdown */}
-             <div className="mt-2 border border-black/5 shadow-sm max-h-[65vh] overflow-y-auto">
-               {suggestions.products.length === 0 &&
-                suggestions.categories.length === 0 &&
-                suggestions.colors.length === 0 &&
-                suggestions.collections.length === 0 ? (
-                 searchQuery ? (
+             {/* Suggestion Chips — always show when search is open */}
+             {!searchQuery && (
+               <div className="mt-6">
+                 <p className="text-[10px] uppercase tracking-[0.3em] text-gray-300 mb-4 font-bold">Try searching</p>
+                 <div className="flex flex-wrap gap-2">
+                   {suggestions.categories.map(cat => (
+                     <button
+                       key={cat}
+                       onClick={() => setSearchQuery(cat)}
+                       className="border border-black/10 px-4 py-2 text-[10px] uppercase tracking-wider hover:border-black hover:bg-black hover:text-white transition-colors"
+                     >
+                       {cat}
+                     </button>
+                   ))}
+                   {suggestions.colors.map(color => (
+                     <button
+                       key={color}
+                       onClick={() => setSearchQuery(color)}
+                       className="border border-black/10 px-4 py-2 text-[10px] uppercase tracking-wider hover:border-black hover:bg-black hover:text-white transition-colors"
+                     >
+                       {color}
+                     </button>
+                   ))}
+                   {suggestions.collections.map(col => (
+                     <button
+                       key={col.slug}
+                       onClick={() => setSearchQuery(col.name)}
+                       className="border border-black/10 px-4 py-2 text-[10px] uppercase tracking-wider hover:border-black hover:bg-black hover:text-white transition-colors"
+                     >
+                       {col.name}
+                     </button>
+                   ))}
+                 </div>
+               </div>
+             )}
+
+             {/* Suggestions Dropdown — filtered results when typing */}
+             {searchQuery && (
+               <div className="mt-2 border border-black/5 shadow-sm max-h-[60vh] overflow-y-auto">
+                 {suggestions.products.length === 0 &&
+                  suggestions.categories.length === 0 &&
+                  suggestions.colors.length === 0 &&
+                  suggestions.collections.length === 0 ? (
                    <div className="py-12 text-center">
                      <p className="text-[10px] uppercase tracking-widest text-gray-300">No results for &quot;{searchQuery}&quot;</p>
                    </div>
-                 ) : null
-               ) : (
-                 <div className="divide-y divide-black/5">
-
-                   {/* Categories */}
-                   {suggestions.categories.length > 0 && (
-                     <div className="px-4 py-3">
-                       <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">Categories</p>
-                       <div className="flex flex-wrap gap-2">
-                         {suggestions.categories.map(cat => (
-                           <Link
-                             key={cat}
-                             href={`/shop?category=${encodeURIComponent(cat)}`}
-                             onClick={() => setIsSearchOpen(false)}
-                             className="border border-black/10 px-3 py-1.5 text-[10px] uppercase tracking-wider hover:border-black hover:bg-black hover:text-white transition-colors"
-                           >
-                             {cat}
-                           </Link>
-                         ))}
+                 ) : (
+                   <div>
+                     {/* Quick filter chips */}
+                     {(suggestions.categories.length > 0 || suggestions.colors.length > 0 || suggestions.collections.length > 0) && (
+                       <div className="px-4 py-3 border-b border-black/5">
+                         <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">Quick filters</p>
+                         <div className="flex flex-wrap gap-2">
+                           {suggestions.categories.map(cat => (
+                             <button
+                               key={cat}
+                               onClick={() => setSearchQuery(cat)}
+                               className="border border-black/10 px-3 py-1.5 text-[10px] uppercase tracking-wider hover:border-black transition-colors"
+                             >
+                               {cat}
+                             </button>
+                           ))}
+                           {suggestions.colors.map(color => (
+                             <button
+                               key={color}
+                               onClick={() => setSearchQuery(color)}
+                               className="border border-black/10 px-3 py-1.5 text-[10px] uppercase tracking-wider hover:border-black transition-colors"
+                             >
+                               {color}
+                             </button>
+                           ))}
+                           {suggestions.collections.map(col => (
+                             <button
+                               key={col.slug}
+                               onClick={() => setSearchQuery(col.name)}
+                               className="border border-black/10 px-3 py-1.5 text-[10px] uppercase tracking-wider hover:border-black transition-colors"
+                             >
+                               {col.name}
+                             </button>
+                           ))}
+                         </div>
                        </div>
-                     </div>
-                   )}
+                     )}
 
-                   {/* Colors */}
-                   {suggestions.colors.length > 0 && (
-                     <div className="px-4 py-3">
-                       <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">Colors</p>
-                       <div className="flex flex-wrap gap-2">
-                         {suggestions.colors.map(color => (
+                     {/* Product results */}
+                     {suggestions.products.length > 0 && (
+                       <div className="py-2">
+                         <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1 px-4">Products</p>
+                         {suggestions.products.slice(0, 5).map(product => (
                            <Link
-                             key={color}
-                             href={`/shop?q=${encodeURIComponent(color)}`}
+                             key={product.id}
+                             href={`/product/${product.id}`}
                              onClick={() => setIsSearchOpen(false)}
-                             className="border border-black/10 px-3 py-1.5 text-[10px] uppercase tracking-wider hover:border-black transition-colors"
+                             className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors"
                            >
-                             {color}
-                           </Link>
-                         ))}
-                       </div>
-                     </div>
-                   )}
-
-                   {/* Collections */}
-                   {suggestions.collections.length > 0 && (
-                     <div className="px-4 py-3">
-                       <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">Collections</p>
-                       <div className="flex flex-wrap gap-2">
-                         {suggestions.collections.map(col => (
-                           <Link
-                             key={col.slug}
-                             href={`/collections/${col.slug}`}
-                             onClick={() => setIsSearchOpen(false)}
-                             className="border border-black/10 px-3 py-1.5 text-[10px] uppercase tracking-wider hover:border-black transition-colors"
-                           >
-                             {col.name}
-                           </Link>
-                         ))}
-                       </div>
-                     </div>
-                   )}
-
-                   {/* Products */}
-                   {suggestions.products.length > 0 && (
-                     <div className="py-2">
-                       <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1 px-4">
-                         {searchQuery ? 'Products' : 'Recent Products'}
-                       </p>
-                       {suggestions.products.slice(0, 5).map(product => (
-                         <Link
-                           key={product.id}
-                           href={`/product/${product.id}`}
-                           onClick={() => setIsSearchOpen(false)}
-                           className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors"
-                         >
-                           {product.images[0] && (
-                             <div className="relative w-10 h-14 bg-gray-50 shrink-0 overflow-hidden">
-                               <Image src={product.images[0]} alt={product.name} fill className="object-cover" unoptimized />
+                             {product.images[0] && (
+                               <div className="relative w-10 h-14 bg-gray-50 shrink-0 overflow-hidden">
+                                 <Image src={product.images[0]} alt={product.name} fill className="object-cover" unoptimized />
+                               </div>
+                             )}
+                             <div className="min-w-0 flex-1">
+                               <p className="text-sm truncate">{product.name}</p>
+                               <p className="text-[9px] text-gray-400 uppercase tracking-wider truncate">{product.category}</p>
                              </div>
-                           )}
-                           <div className="min-w-0 flex-1">
-                             <p className="text-sm truncate">{product.name}</p>
-                             <p className="text-[9px] text-gray-400 uppercase tracking-wider truncate">{product.category}</p>
-                           </div>
-                           <p className="text-sm font-medium shrink-0">₹{product.price}</p>
-                         </Link>
-                       ))}
-                       {searchQuery && (
+                             <p className="text-sm font-medium shrink-0">₹{product.price}</p>
+                           </Link>
+                         ))}
                          <Link
                            href={`/shop?q=${encodeURIComponent(searchQuery)}`}
                            onClick={() => setIsSearchOpen(false)}
@@ -252,13 +262,12 @@ export default function Navbar() {
                          >
                            View all results
                          </Link>
-                       )}
-                     </div>
-                   )}
-
-                 </div>
-               )}
-             </div>
+                       </div>
+                     )}
+                   </div>
+                 )}
+               </div>
+             )}
            </div>
         </div>
       )}
