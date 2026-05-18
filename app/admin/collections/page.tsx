@@ -344,7 +344,7 @@ export default function AdminCollections() {
                     <div key={p.id} className="flex justify-between items-center px-4 py-2 bg-gray-50 border border-black/5">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm truncate">{p.name}</p>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider">{p.category} — ${p.price}</p>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider">{p.category} — ₹{p.price}</p>
                       </div>
                       <button
                         onClick={() => removeProduct(p.id)}

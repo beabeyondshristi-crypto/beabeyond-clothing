@@ -37,7 +37,7 @@ function MockRazorpayModal({
             <div className="text-3xl mb-4 font-serif">💳</div>
             <h2 className="text-lg font-serif uppercase tracking-tighter mb-2">Complete Payment</h2>
             <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-2">Razorpay Mock</p>
-            <p className="text-3xl font-serif my-6">${amount.toFixed(2)}</p>
+            <p className="text-3xl font-serif my-6">₹{amount.toFixed(2)}</p>
             <div className="space-y-3">
               <div className="border border-black/10 p-3 text-[10px] text-left text-gray-500 uppercase tracking-wider">
                 <span className="font-bold text-black">Card:</span> 4242 4242 4242 4242
@@ -51,7 +51,7 @@ function MockRazorpayModal({
               disabled={processing}
               className="w-full bg-blue-600 text-white py-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-blue-700 transition-colors mt-6 disabled:bg-gray-400"
             >
-              {processing ? 'Processing...' : `Pay $${amount.toFixed(2)}`}
+              {processing ? 'Processing...' : `Pay ₹${amount.toFixed(2)}`}
             </button>
             <button
               onClick={onClose}
@@ -335,7 +335,7 @@ export default function CheckoutPage() {
                       <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-1">{item.category}</p>
                       <div className="flex justify-between items-center mt-2">
                         <p className="text-[10px] text-gray-500">Qty: {item.quantity}</p>
-                        <p className="text-sm font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                        <p className="text-sm font-medium">₹{(item.price * item.quantity).toFixed(2)}</p>
                       </div>
                     </div>
                   </div>
@@ -352,25 +352,25 @@ export default function CheckoutPage() {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span>₹{subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Shipping</span>
-                  <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
+                  <span>{shipping === 0 ? 'Free' : `₹${shipping.toFixed(2)}`}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Tax</span>
-                  <span>${tax.toFixed(2)}</span>
+                  <span>₹{tax.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-bold border-t border-black/10 pt-3 mt-3">
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>₹{total.toFixed(2)}</span>
                 </div>
               </div>
 
               {subtotal < 200 && (
                 <p className="text-[9px] text-gray-400 uppercase tracking-wider mt-4">
-                  Add ${(200 - subtotal).toFixed(2)} more for free shipping
+                  Add ₹{(200 - subtotal).toFixed(2)} more for free shipping
                 </p>
               )}
 

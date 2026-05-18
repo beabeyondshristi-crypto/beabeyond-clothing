@@ -83,7 +83,7 @@ export default function AccountDashboard() {
                   }`}>
                     {order.status}
                   </span>
-                  <p className="text-[10px] text-gray-500 mt-1">${Number(order.total).toFixed(2)}</p>
+                  <p className="text-[10px] text-gray-500 mt-1">₹{Number(order.total).toFixed(2)}</p>
                 </div>
               </Link>
             ))}

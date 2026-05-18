@@ -39,7 +39,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         </div>
         <div className="border border-black/10 p-6">
           <h3 className="text-[10px] font-bold uppercase tracking-widest mb-3">Total</h3>
-          <p className="text-xl font-serif">${Number(order.total).toFixed(2)}</p>
+          <p className="text-xl font-serif">₹{Number(order.total).toFixed(2)}</p>
         </div>
       </div>
 
@@ -52,17 +52,17 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 <p className="text-sm font-medium">{item.product_name}</p>
                 <p className="text-[10px] text-gray-400 uppercase tracking-wider">Qty: {item.quantity} {item.size ? `/ Size: ${item.size}` : ''} {item.color ? `/ Color: ${item.color}` : ''}</p>
               </div>
-              <p className="text-sm">${(Number(item.price) * item.quantity).toFixed(2)}</p>
+              <p className="text-sm">₹{(Number(item.price) * item.quantity).toFixed(2)}</p>
             </div>
           ))}
         </div>
       </div>
 
       <div className="border border-black/10 p-6 space-y-2">
-        <div className="flex justify-between text-sm"><span>Subtotal</span><span>${Number(order.subtotal).toFixed(2)}</span></div>
-        <div className="flex justify-between text-sm"><span>Shipping</span><span>{Number(order.shipping_cost) === 0 ? 'Free' : `$${Number(order.shipping_cost).toFixed(2)}`}</span></div>
-        <div className="flex justify-between text-sm"><span>Tax</span><span>${Number(order.tax).toFixed(2)}</span></div>
-        <div className="flex justify-between text-sm font-bold border-t border-black/10 pt-2"><span>Total</span><span>${Number(order.total).toFixed(2)}</span></div>
+        <div className="flex justify-between text-sm"><span>Subtotal</span><span>₹{Number(order.subtotal).toFixed(2)}</span></div>
+        <div className="flex justify-between text-sm"><span>Shipping</span><span>{Number(order.shipping_cost) === 0 ? 'Free' : `₹${Number(order.shipping_cost).toFixed(2)}`}</span></div>
+        <div className="flex justify-between text-sm"><span>Tax</span><span>₹{Number(order.tax).toFixed(2)}</span></div>
+        <div className="flex justify-between text-sm font-bold border-t border-black/10 pt-2"><span>Total</span><span>₹{Number(order.total).toFixed(2)}</span></div>
       </div>
 
       {order.shipping_address && Object.keys(order.shipping_address).length > 0 && (

@@ -159,7 +159,7 @@ function ShopContent() {
                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] mb-4 text-gray-900">Price Range</h3>
                    <div className="flex gap-4 items-center mb-4">
                       <div className="border border-gray-200 p-2 w-full text-center">
-                        <span className="text-[10px] text-gray-500">$</span>
+                        <span className="text-[10px] text-gray-500">₹</span>
                         <input
                            type="number"
                            value={priceRange[0]}
@@ -169,7 +169,7 @@ function ShopContent() {
                       </div>
                       <span className="text-gray-300">-</span>
                       <div className="border border-gray-200 p-2 w-full text-center">
-                        <span className="text-[10px] text-gray-500">$</span>
+                        <span className="text-[10px] text-gray-500">₹</span>
                         <input
                            type="number"
                            value={priceRange[1]}

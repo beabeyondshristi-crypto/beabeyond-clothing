@@ -152,7 +152,7 @@ export default function Navbar() {
                            />
                         </div>
                         <h4 className="text-xs font-normal uppercase tracking-widest">{product.name}</h4>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1">${product.price}</p>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1">₹{product.price}</p>
                       </Link>
                     ))}
                   </div>

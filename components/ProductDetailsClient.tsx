@@ -76,7 +76,7 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
              <h1 className="text-4xl md:text-5xl font-normal font-serif uppercase tracking-tighter mb-4 leading-tight">
                {product.name}
              </h1>
-             <p className="text-xl font-light mb-8">${product.price}</p>
+             <p className="text-xl font-light mb-8">₹{product.price}</p>
              <div className="prose prose-sm max-w-none text-gray-500 mb-12 uppercase text-[10px] tracking-widest leading-loose font-light">
                <p>{product.description}</p>
              </div>

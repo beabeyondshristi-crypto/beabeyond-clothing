@@ -111,7 +111,7 @@ export default function AdminOrders() {
                     <p className="text-[11px] text-gray-500">{new Date(order.created_at).toLocaleDateString()}</p>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-sm font-serif">${Number(order.total).toFixed(2)}</p>
+                    <p className="text-sm font-serif">₹{Number(order.total).toFixed(2)}</p>
                   </td>
                   <td className="px-6 py-4">
                     <select
@@ -193,7 +193,7 @@ export default function AdminOrders() {
                   <td className="px-4 py-3 text-[11px]">{item.quantity}</td>
                   <td className="px-4 py-3 text-[11px]">{item.size}</td>
                   <td className="px-4 py-3 text-[11px]">{item.color}</td>
-                  <td className="px-4 py-3 text-right text-sm font-serif">${Number(item.price).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right text-sm font-serif">₹{Number(item.price).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -203,15 +203,15 @@ export default function AdminOrders() {
             <div className="text-right space-y-1">
               <div className="flex justify-between gap-12">
                 <span className="text-[10px] uppercase tracking-widest text-gray-400">Subtotal</span>
-                <span className="text-sm font-serif">${Number(selectedOrder.subtotal).toFixed(2)}</span>
+                <span className="text-sm font-serif">₹{Number(selectedOrder.subtotal).toFixed(2)}</span>
               </div>
               <div className="flex justify-between gap-12">
                 <span className="text-[10px] uppercase tracking-widest text-gray-400">Shipping</span>
-                <span className="text-sm font-serif">${Number(selectedOrder.shipping_cost).toFixed(2)}</span>
+                <span className="text-sm font-serif">₹{Number(selectedOrder.shipping_cost).toFixed(2)}</span>
               </div>
               <div className="flex justify-between gap-12 border-t border-black/5 pt-1 mt-1">
                 <span className="text-[11px] uppercase tracking-widest font-bold">Total</span>
-                <span className="text-base font-serif font-bold">${Number(selectedOrder.total).toFixed(2)}</span>
+                <span className="text-base font-serif font-bold">₹{Number(selectedOrder.total).toFixed(2)}</span>
               </div>
             </div>
           </div>
