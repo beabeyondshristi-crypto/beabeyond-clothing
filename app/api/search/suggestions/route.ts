@@ -8,8 +8,18 @@ export async function GET(req: NextRequest) {
     const q = searchParams.get('q') || '';
 
     if (!q.trim()) {
-      const { data } = await supabase.from('products').select('*').limit(8).order('created_at', { ascending: false });
-      return NextResponse.json({ categories: [], colors: [], collections: [], products: data || [] });
+      const [catRes, prodRes, colRes] = await Promise.all([
+        supabase.from('products').select('category').limit(8),
+        supabase.from('products').select('*').limit(8).order('created_at', { ascending: false }),
+        supabase.from('collections').select('name, slug').limit(8),
+      ]);
+      const categories = [...new Set((catRes.data || []).map(r => r.category))];
+      return NextResponse.json({
+        categories,
+        colors: ['Black', 'White', 'Navy'],
+        collections: colRes.data || [],
+        products: prodRes.data || [],
+      });
     }
 
     const like = `%${q}%`;
@@ -31,7 +41,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ categories, colors: [...colorSet], collections: colRes.data || [], products });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ categories: [], colors: [], collections: [], products: [] });
   }
 }
