@@ -42,7 +42,7 @@ export default function Navbar() {
     window.clearTimeout(searchTimer.current);
     searchTimer.current = window.setTimeout(async () => {
       try {
-        const res = await fetch(`/api/products?search=${encodeURIComponent(searchQuery)}&limit=6`);
+        const res = await fetch(`/api/products?search=${encodeURIComponent(searchQuery)}&limit=10`);
         const data = await res.json();
         if (Array.isArray(data)) setSearchResults(data);
       } catch (e) {
@@ -114,54 +114,70 @@ export default function Navbar() {
 
       {/* Search Overlay */}
       {isSearchOpen && (
-        <div className="fixed inset-0 bg-white z-[60] flex flex-col animate-in fade-in duration-300">
-           <div className="flex justify-end p-6 md:p-12">
-             <button onClick={() => setIsSearchOpen(false)} className="text-2xl font-light hover:rotate-90 transition-transform">✕</button>
-           </div>
-           
-           <div className="flex flex-col items-center px-6 mt-4 w-full max-w-7xl mx-auto h-full overflow-hidden">
-             <form onSubmit={handleSearchSubmit} className="w-full border-b border-black pb-4 mb-16">
+        <div className="fixed inset-0 bg-white z-[60] flex justify-center animate-in fade-in duration-200">
+           <div className="relative w-full max-w-3xl mx-auto px-6 pt-24 md:pt-32">
+             <div className="flex justify-between items-center mb-8">
+               <span className="text-[10px] uppercase tracking-[0.3em] text-gray-300 font-bold">Search</span>
+               <button onClick={() => setIsSearchOpen(false)} className="text-lg font-light hover:opacity-50 transition-opacity">✕</button>
+             </div>
+
+             <form onSubmit={handleSearchSubmit} className="relative">
                <input 
                  type="text" 
-                 placeholder="SEARCH PRODUCTS..." 
-                 className="w-full text-3xl md:text-6xl font-serif uppercase tracking-tight placeholder-gray-200 focus:outline-none"
+                 placeholder="Search products..." 
+                 className="w-full text-xl md:text-2xl border-b border-black pb-4 pr-10 focus:outline-none placeholder:text-gray-200 uppercase tracking-wider"
                  value={searchQuery}
                  onChange={(e) => setSearchQuery(e.target.value)}
                  autoFocus
                />
+               {searchQuery && (
+                 <button type="submit" className="absolute right-0 bottom-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-black">
+                   Go
+                 </button>
+               )}
              </form>
 
-             {/* Larger Live Results */}
-             <div className="w-full overflow-y-auto pb-32">
-                {searchResults.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-                    {searchResults.map(product => (
-                      <Link 
-                        key={product.id} 
-                        href={`/product/${product.id}`}
-                        onClick={() => setIsSearchOpen(false)}
-                        className="group flex flex-col"
-                      >
-                        <div className="relative aspect-[3/4] bg-gray-50 mb-4 overflow-hidden border border-transparent group-hover:border-black transition-colors">
-                           <Image 
-                             src={product.images[0]} 
-                             alt={product.name} 
-                             fill 
-                             className="object-cover transition-transform duration-700 group-hover:scale-105"
-                             unoptimized
-                           />
-                        </div>
-                        <h4 className="text-xs font-normal uppercase tracking-widest">{product.name}</h4>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1">₹{product.price}</p>
-                      </Link>
-                    ))}
-                  </div>
-                ) : searchQuery && (
-                   <div className="flex flex-col items-center justify-center py-20 text-gray-300">
-                      <p className="text-xl font-serif italic uppercase tracking-widest">No matching items found</p>
+             {/* Suggestions Dropdown */}
+             {searchQuery && (
+               <div className="mt-2 border border-black/5 shadow-sm max-h-[60vh] overflow-y-auto">
+                 {searchResults.length > 0 ? (
+                   <div>
+                     {searchResults.slice(0, 8).map(product => (
+                       <Link
+                         key={product.id}
+                         href={`/product/${product.id}`}
+                         onClick={() => setIsSearchOpen(false)}
+                         className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-black/5 last:border-0"
+                       >
+                         {product.images[0] && (
+                           <div className="relative w-12 h-16 bg-gray-50 shrink-0 overflow-hidden">
+                             <Image src={product.images[0]} alt={product.name} fill className="object-cover" unoptimized />
+                           </div>
+                         )}
+                         <div className="min-w-0 flex-1">
+                           <p className="text-sm font-medium truncate">{product.name}</p>
+                           <p className="text-[10px] text-gray-400 uppercase tracking-wider truncate">{product.category}</p>
+                         </div>
+                         <p className="text-sm font-medium shrink-0">₹{product.price}</p>
+                       </Link>
+                     ))}
+                     {searchResults.length > 8 && (
+                       <Link
+                         href={`/shop?q=${encodeURIComponent(searchQuery)}`}
+                         onClick={() => setIsSearchOpen(false)}
+                         className="block text-center py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-black hover:bg-gray-50 transition-colors"
+                       >
+                         View all {searchResults.length} results
+                       </Link>
+                     )}
                    </div>
-                )}
-             </div>
+                 ) : (
+                   <div className="py-12 text-center">
+                     <p className="text-[10px] uppercase tracking-widest text-gray-300">No results for &quot;{searchQuery}&quot;</p>
+                   </div>
+                 )}
+               </div>
+             )}
            </div>
         </div>
       )}
