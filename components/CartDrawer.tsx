@@ -95,7 +95,7 @@ export default function CartDrawer() {
                         +
                       </button>
                     </div>
-                    <p className="text-xs font-medium">${item.price * item.quantity}</p>
+                    <p className="text-xs font-medium">₹{item.price * item.quantity}</p>
                   </div>
                 </div>
               </div>
@@ -108,14 +108,18 @@ export default function CartDrawer() {
           <div className="p-6 border-t border-gray-100 space-y-4">
             <div className="flex justify-between items-center mb-2">
               <span className="text-[10px] font-bold uppercase tracking-widest">Subtotal</span>
-              <span className="text-sm font-medium">${cartTotal}</span>
+              <span className="text-sm font-medium">₹{cartTotal}</span>
             </div>
             <p className="text-[9px] text-gray-400 uppercase tracking-widest leading-relaxed">
               Shipping and taxes calculated at checkout.
             </p>
-            <button className="w-full bg-black text-white py-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-800 transition-colors">
+            <Link
+              href="/checkout"
+              onClick={() => setIsCartOpen(false)}
+              className="block w-full bg-black text-white py-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-800 transition-colors text-center"
+            >
               Checkout
-            </button>
+            </Link>
           </div>
         )}
       </div>

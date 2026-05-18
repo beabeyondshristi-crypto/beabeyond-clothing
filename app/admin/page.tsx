@@ -40,7 +40,7 @@ export default function AdminDashboard() {
     { name: 'Total Products', value: stats?.total_products ?? 0 },
     { name: 'Total Collections', value: stats?.total_collections ?? 0 },
     { name: 'Active Orders', value: stats?.pending_orders ?? 0 },
-    { name: 'Total Revenue', value: `$${((stats?.total_revenue ?? 0)).toLocaleString()}` },
+    { name: 'Total Revenue', value: `₹${((stats?.total_revenue ?? 0)).toLocaleString()}` },
   ];
 
   return (
@@ -72,7 +72,7 @@ export default function AdminDashboard() {
                     <p className="text-[9px] text-gray-400 uppercase tracking-widest mt-1">{order.customer_name}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[11px] font-serif">${Number(order.total).toFixed(2)}</p>
+                    <p className="text-[11px] font-serif">₹{Number(order.total).toFixed(2)}</p>
                     <span className={`text-[8px] px-2 py-0.5 uppercase tracking-[0.2em] font-bold ${
                       order.status === 'delivered' || order.status === 'shipped'
                         ? 'bg-green-50 text-green-600'
@@ -93,7 +93,7 @@ export default function AdminDashboard() {
           <div className="bg-white border border-black/5 shadow-sm p-8 text-center">
             <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-gray-300 mb-6 block">Revenue</span>
             <h3 className="text-3xl font-serif uppercase tracking-tight mb-2">
-              ${((stats?.total_revenue ?? 0)).toLocaleString()}
+              ₹{((stats?.total_revenue ?? 0)).toLocaleString()}
             </h3>
             <p className="text-[10px] text-gray-400 uppercase tracking-widest">
               Total Revenue (All Time)

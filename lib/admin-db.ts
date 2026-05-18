@@ -160,6 +160,45 @@ export async function deleteCollection(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// ─── Collection Products ────────────────────────────────
+
+export async function getCollectionProducts(collectionId: string): Promise<Product[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('collection_products')
+    .select('product_id, products(*)')
+    .eq('collection_id', collectionId);
+  if (error) throw error;
+  return (data || []).map((cp: any) => mapProduct(cp.products));
+}
+
+export async function addProductToCollection(collectionId: string, productId: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from('collection_products').insert({
+    collection_id: collectionId,
+    product_id: productId,
+  });
+  if (error) throw error;
+}
+
+export async function removeProductFromCollection(collectionId: string, productId: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from('collection_products').delete()
+    .eq('collection_id', collectionId)
+    .eq('product_id', productId);
+  if (error) throw error;
+}
+
+export async function getCollectionsWithProduct(productId: string): Promise<{ collection_id: string }[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('collection_products')
+    .select('collection_id')
+    .eq('product_id', productId);
+  if (error) throw error;
+  return data || [];
+}
+
 // ─── Orders ─────────────────────────────────────────────
 
 export async function getOrders(status?: string): Promise<Order[]> {
@@ -227,9 +266,11 @@ export async function updateStock(productId: string, quantity: number, reason?: 
 
 // ─── Homepage Sections ───────────────────────────────────
 
-export async function getHomepageSections(): Promise<HomepageSection[]> {
+export async function getHomepageSections(page?: string): Promise<HomepageSection[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from('homepage_sections').select('*').order('sort_order', { ascending: true });
+  let query = supabase.from('homepage_sections').select('*').order('sort_order', { ascending: true });
+  if (page) query = query.eq('page', page);
+  const { data, error } = await query;
   if (error) throw error;
   return (data || []).map(s => ({ ...s, settings: typeof s.settings === 'string' ? JSON.parse(s.settings) : (s.settings || {}) }));
 }
@@ -245,6 +286,7 @@ export async function getHomepageSection(id: string): Promise<HomepageSection | 
 export async function createHomepageSection(input: Partial<HomepageSection>): Promise<HomepageSection> {
   const supabase = await createClient();
   const { data, error } = await supabase.from('homepage_sections').insert({
+    page: input.page || 'home',
     section_type: input.section_type,
     title: input.title || '',
     subtitle: input.subtitle || '',
@@ -264,6 +306,7 @@ export async function createHomepageSection(input: Partial<HomepageSection>): Pr
 export async function updateHomepageSection(id: string, input: Partial<HomepageSection>): Promise<HomepageSection> {
   const supabase = await createClient();
   const { data, error } = await supabase.from('homepage_sections').update({
+    page: input.page,
     section_type: input.section_type,
     title: input.title,
     subtitle: input.subtitle,

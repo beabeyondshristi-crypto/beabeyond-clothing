@@ -1,64 +1,89 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, useEffect, use } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import ProductCard from '@/components/ProductCard';
-import { products, collections } from '@/lib/data';
+import type { Product, Collection } from '@/lib/data';
 
 export default function CollectionPage({ params }: { params: Promise<{ slug: string }> }) {
-  // Unwrap params using React.use()
   const { slug } = use(params);
-  
-  const collection = collections.find(c => c.slug === slug);
+
+  const [collection, setCollection] = useState<Collection | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
   const [sortOption, setSortOption] = useState('newest');
+  const [loading, setLoading] = useState(true);
 
-  // Filter & Sort Logic (Computed during render)
-  const filteredProducts = (() => {
-    let result = [...products];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [colRes, prodRes] = await Promise.all([
+          fetch(`/api/collections/${slug}`),
+          fetch(`/api/collections/${slug}/products`),
+        ]);
+        const colData = await colRes.json();
+        const prodData = await prodRes.json();
 
-    // Filter by Collection Rule
-    switch (slug) {
-      case 'new-arrivals':
-        result = result.slice(0, 12); // Mock new arrivals
-        break;
-      case 'essentials':
-        result = result.filter(p => p.price < 100);
-        break;
-      case 'accessories':
-        result = result.filter(p => p.category === 'Accessories');
-        break;
-      default:
-        break; 
-    }
+        if (!colData || colData.error) {
+          setCollection(null);
+          setLoading(false);
+          return;
+        }
 
-    // Apply Sort
-    switch (sortOption) {
-      case 'price-asc':
-        result.sort((a, b) => a.price - b.price);
-        break;
-      case 'price-desc':
-        result.sort((a, b) => b.price - a.price);
-        break;
-      case 'newest':
-      default:
-        result.sort((a, b) => parseInt(b.id) - parseInt(a.id));
-        break;
-    }
-    return result;
-  })();
+        setCollection(colData);
+
+        let result = Array.isArray(prodData) ? [...prodData] : [];
+
+        const sorted = [...result];
+        switch (sortOption) {
+          case 'price-asc': sorted.sort((a, b) => a.price - b.price); break;
+          case 'price-desc': sorted.sort((a, b) => b.price - a.price); break;
+          default: sorted.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()); break;
+        }
+        setProducts(sorted);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [slug]);
+
+  useEffect(() => {
+    setProducts(prev => {
+      const sorted = [...prev];
+      switch (sortOption) {
+        case 'price-asc': sorted.sort((a, b) => a.price - b.price); break;
+        case 'price-desc': sorted.sort((a, b) => b.price - a.price); break;
+        default: sorted.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()); break;
+      }
+      return sorted;
+    });
+  }, [sortOption]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col font-sans">
+        <Navbar />
+        <div className="flex-grow flex items-center justify-center">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!collection) {
     notFound();
+    return null;
   }
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
       <Navbar />
 
-      {/* Collection Hero */}
       <section className="relative h-[60vh] md:h-[70vh] w-full bg-gray-100 flex items-center justify-center overflow-hidden border-b border-black">
         <Image
             src={collection.image}
@@ -81,7 +106,6 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
       </section>
 
       <main className="flex-grow">
-         {/* Introduction Text */}
          <section className="py-24 px-6 md:px-12 border-b border-black bg-white text-center">
             <div className="max-w-4xl mx-auto">
                 <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-gray-400 mb-6 block">The Philosophy</span>
@@ -92,7 +116,6 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
             </div>
          </section>
 
-         {/* Toolbar */}
          <div className="flex justify-between items-center px-6 py-6 md:px-12 border-b border-gray-100 sticky top-0 bg-white/95 backdrop-blur-sm z-40">
             <div className="flex gap-4 text-[10px] uppercase tracking-widest text-gray-500">
                 <Link href="/" className="hover:text-black">Home</Link>
@@ -102,7 +125,7 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
                 <span className="text-black font-bold">{collection.name}</span>
             </div>
 
-            <select 
+            <select
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value)}
                 className="text-[10px] font-bold uppercase tracking-[0.2em] outline-none bg-transparent cursor-pointer hover:opacity-50"
@@ -113,11 +136,10 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
             </select>
          </div>
 
-         {/* Grid */}
          <section className="p-6 md:p-12 border-b border-black">
-            {filteredProducts.length > 0 ? (
+            {products.length > 0 ? (
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
-                    {filteredProducts.map((product) => (
+                    {products.map((product) => (
                     <ProductCard key={product.id} product={product} />
                     ))}
                 </div>
@@ -128,11 +150,10 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
             )}
          </section>
 
-         {/* Featured Highlight Section */}
          <section className="grid grid-cols-1 lg:grid-cols-2 border-b border-black">
              <div className="relative h-[600px] lg:h-auto border-b lg:border-b-0 lg:border-r border-black order-2 lg:order-1">
-                 <Image 
-                     src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1200&q=80" 
+                 <Image
+                     src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1200&q=80"
                      alt="Collection Highlight"
                      fill
                      className="object-cover"
@@ -145,11 +166,11 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
                      The {collection.name}<br/>Edit.
                  </h2>
                  <p className="text-xs font-light uppercase tracking-widest leading-loose text-gray-500 mb-12 max-w-md">
-                     Discover the key pieces that define this season&apos;s {collection.name.toLowerCase()}. 
+                     Discover the key pieces that define this season&apos;s {collection.name.toLowerCase()}.
                      Meticulously crafted for the modern wardrobe.
                  </p>
-                 <Link 
-                     href="/shop" 
+                 <Link
+                     href="/shop"
                      className="inline-block border border-black px-12 py-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-black hover:text-white transition-colors text-center w-max"
                  >
                      View Lookbook
@@ -157,20 +178,19 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
              </div>
          </section>
 
-         {/* Newsletter Section */}
          <section className="py-24 px-6 md:px-12 bg-black text-white flex flex-col items-center justify-center text-center">
             <h2 className="text-3xl md:text-4xl font-normal uppercase tracking-tighter mb-6 font-serif">Join The Club</h2>
             <p className="text-gray-400 max-w-xs mb-10 font-light text-[11px] uppercase tracking-widest leading-relaxed">
                 Sign up for exclusive access to new drops and member-only sales.
             </p>
             <form className="w-full max-w-sm flex flex-col gap-4">
-                <input 
-                    type="email" 
-                    placeholder="ENTER YOUR EMAIL" 
+                <input
+                    type="email"
+                    placeholder="ENTER YOUR EMAIL"
                     className="bg-transparent border border-white/30 p-4 text-white placeholder-gray-600 text-[10px] font-bold uppercase tracking-[0.2em] focus:outline-none focus:border-white transition-colors"
                 />
-                <button 
-                    type="submit" 
+                <button
+                    type="submit"
                     className="bg-white text-black py-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-200 transition-colors"
                 >
                     Subscribe

@@ -4,10 +4,22 @@ import { useEffect, useState } from 'react';
 import type { HomepageSection } from '@/lib/types';
 import { compressImage } from '@/lib/image-compress';
 
+const PAGES = [
+  { value: 'home', label: 'Homepage' },
+  { value: 'new-arrivals', label: 'New Arrivals' },
+  { value: 'essentials', label: 'Essentials' },
+  { value: 'trending', label: 'Trending' },
+  { value: 'shop', label: 'Shop All' },
+  { value: 'collections', label: 'Collections' },
+];
+
 const SECTION_TYPES: { value: HomepageSection['section_type']; label: string }[] = [
   { value: 'hero_slide', label: 'Hero Slide' },
+  { value: 'hero', label: 'Hero Banner' },
   { value: 'editorial', label: 'Editorial Block' },
+  { value: 'content', label: 'Content Block' },
   { value: 'category_spotlight', label: 'Category Spotlight' },
+  { value: 'feature', label: 'Feature Block' },
   { value: 'newsletter', label: 'Newsletter Signup' },
 ];
 
@@ -18,6 +30,7 @@ const LAYOUT_OPTIONS = [
 ];
 
 const defaultForm = {
+  page: 'home',
   section_type: 'hero_slide' as HomepageSection['section_type'],
   title: '',
   subtitle: '',
@@ -37,6 +50,7 @@ export default function AdminHomepage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(defaultForm);
+  const [currentPage, setCurrentPage] = useState('home');
   const [formError, setFormError] = useState('');
   const [uploading, setUploading] = useState<'image_url' | 'image_url_2' | null>(null);
 
@@ -63,9 +77,10 @@ export default function AdminHomepage() {
     }
   };
 
-  const fetchSections = async () => {
+  const fetchSections = async (page?: string) => {
     try {
-      const res = await fetch('/api/admin/homepage-sections');
+      const url = page ? `/api/admin/homepage-sections?page=${page}` : '/api/admin/homepage-sections';
+      const res = await fetch(url);
       const data = await res.json();
       if (Array.isArray(data)) setSections(data);
     } catch (e) {
@@ -75,11 +90,12 @@ export default function AdminHomepage() {
     }
   };
 
-  useEffect(() => { fetchSections(); }, []);
+  useEffect(() => { fetchSections(currentPage); }, [currentPage]);
 
   const openForm = (section?: HomepageSection) => {
     if (section) {
       setForm({
+        page: section.page,
         section_type: section.section_type,
         title: section.title,
         subtitle: section.subtitle,
@@ -94,7 +110,7 @@ export default function AdminHomepage() {
       });
       setEditingId(section.id);
     } else {
-      setForm({ ...defaultForm, sort_order: sections.length + 1 });
+      setForm({ ...defaultForm, page: currentPage, sort_order: sections.length + 1 });
       setEditingId(null);
     }
     setFormError('');
@@ -190,17 +206,32 @@ export default function AdminHomepage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center bg-white p-6 border border-black/5 shadow-sm">
-        <div>
-          <h2 className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Storefront</h2>
-          <p className="text-xl font-serif mt-1">{sections.length} Sections</p>
+      <div className="bg-white border border-black/5 shadow-sm">
+        <div className="flex justify-between items-center p-6 border-b border-black/5">
+          <div>
+            <h2 className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Storefront</h2>
+            <p className="text-xl font-serif mt-1">{sections.length} Sections</p>
+          </div>
+          <button
+            onClick={() => openForm()}
+            className="bg-black text-white px-8 py-3 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-800 transition-colors"
+          >
+            Add Section
+          </button>
         </div>
-        <button
-          onClick={() => openForm()}
-          className="bg-black text-white px-8 py-3 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-800 transition-colors"
-        >
-          Add Section
-        </button>
+        <div className="flex gap-1 px-6 py-3 overflow-x-auto">
+          {PAGES.map(p => (
+            <button
+              key={p.value}
+              onClick={() => setCurrentPage(p.value)}
+              className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors whitespace-nowrap ${
+                currentPage === p.value ? 'bg-black text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {sections.length === 0 ? (
@@ -272,6 +303,20 @@ export default function AdminHomepage() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-8">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-widest font-bold">Page</label>
+                  <select
+                    value={form.page}
+                    onChange={(e) => setForm({ ...form, page: e.target.value })}
+                    className="w-full border-b border-black py-3 text-sm focus:outline-none bg-white"
+                    disabled={!!editingId}
+                  >
+                    {PAGES.map(p => (
+                      <option key={p.value} value={p.value}>{p.label}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase tracking-widest font-bold">Section Type</label>
                   <select

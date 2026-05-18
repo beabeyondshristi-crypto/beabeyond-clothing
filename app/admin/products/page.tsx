@@ -166,7 +166,7 @@ export default function AdminProducts() {
       const data = new FormData();
       for (const file of Array.from(files)) {
         const compressed = await compressImage(file, 1200, 0.7);
-        const webpFile = new File([compressed], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' });
+        const webpFile = new File([compressed], file.name.replace(/\.[^.]+₹/, '.webp'), { type: 'image/webp' });
         data.append('images', webpFile);
       }
       const res = await fetch('/api/admin/upload', { method: 'POST', body: data });
@@ -299,7 +299,7 @@ export default function AdminProducts() {
                     <span className="text-[10px] uppercase tracking-widest text-gray-500">{product.category}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-sm font-serif">${Number(product.price).toFixed(2)}</span>
+                    <span className="text-sm font-serif">₹{Number(product.price).toFixed(2)}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`text-[10px] font-bold ${(product.stock ?? 0) <= (product.low_stock_threshold ?? 5) ? 'text-red-500' : 'text-gray-700'}`}>
@@ -361,7 +361,7 @@ export default function AdminProducts() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-widest font-bold">Price ($)</label>
+                  <label className="text-[10px] uppercase tracking-widest font-bold">Price (₹)</label>
                   <input
                     type="number"
                     step="0.01"

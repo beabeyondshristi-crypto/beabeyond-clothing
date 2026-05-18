@@ -32,6 +32,22 @@ export interface Customer {
   name: string;
   phone: string;
   created_at: string;
+  updated_at: string;
+}
+
+export interface Address {
+  id: string;
+  customer_id: string;
+  label: string;
+  line1: string;
+  line2: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Order {
@@ -93,7 +109,8 @@ export interface AdminUser {
 
 export interface HomepageSection {
   id: string;
-  section_type: 'hero_slide' | 'editorial' | 'category_spotlight' | 'newsletter';
+  page: string;
+  section_type: 'hero_slide' | 'editorial' | 'category_spotlight' | 'newsletter' | 'hero' | 'content' | 'feature';
   title: string;
   subtitle: string;
   description: string;

@@ -37,7 +37,7 @@ export default function AdminAnalytics() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-8 border border-black/5 shadow-sm">
           <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-2 font-bold">Total Revenue</p>
-          <p className="text-3xl font-serif">${stats.total_revenue.toLocaleString()}</p>
+          <p className="text-3xl font-serif">₹{stats.total_revenue.toLocaleString()}</p>
         </div>
         <div className="bg-white p-8 border border-black/5 shadow-sm">
           <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-2 font-bold">Total Orders</p>
@@ -69,7 +69,7 @@ export default function AdminAnalytics() {
                       style={{ width: `${(m.revenue / maxRevenue) * 100}%` }}
                     />
                   </div>
-                  <span className="text-sm font-serif w-24 text-right">${m.revenue.toFixed(0)}</span>
+                  <span className="text-sm font-serif w-24 text-right">₹{m.revenue.toFixed(0)}</span>
                 </div>
               );
             })}
@@ -106,7 +106,7 @@ export default function AdminAnalytics() {
                     <p className="text-[9px] text-gray-400 uppercase tracking-widest mt-0.5">{p.sold} units sold</p>
                   </div>
                 </div>
-                <p className="text-sm font-serif">${p.revenue.toFixed(0)}</p>
+                <p className="text-sm font-serif">₹{p.revenue.toFixed(0)}</p>
               </div>
             ))}
           </div>
