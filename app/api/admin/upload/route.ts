@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
 import { requireAdmin } from '@/lib/admin-db';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,23 +13,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No files uploaded' }, { status: 400 });
     }
 
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
-    }
-
+    const supabase = await createClient();
     const urls: string[] = [];
+    const bucket = 'product-images';
 
     for (const file of files) {
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
+      const ext = file.name.match(/\.\w+$/)?.[0] || '.jpg';
+      const filename = `products/${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
 
-      const ext = path.extname(file.name) || '.jpg';
-      const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
-      const filepath = path.join(uploadDir, filename);
+      const buffer = Buffer.from(await file.arrayBuffer());
 
-      await writeFile(filepath, buffer);
-      urls.push(`/uploads/${filename}`);
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(filename, buffer, {
+          contentType: file.type || 'image/jpeg',
+          upsert: false,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(filename);
+
+      urls.push(publicUrl);
     }
 
     return NextResponse.json({ urls });
