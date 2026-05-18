@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .select('*, order_items(*)')
       .eq('id', id)
       .eq('customer_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
