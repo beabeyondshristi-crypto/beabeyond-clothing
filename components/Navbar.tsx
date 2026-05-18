@@ -7,6 +7,7 @@ import type { Product } from '@/lib/data';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import CartDrawer from './CartDrawer';
+import { createClient } from '@/lib/supabase/client';
 
 export default function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -14,8 +15,16 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const searchTimer = useRef<number>(0);
+  const [user, setUser] = useState<any>(null);
   const router = useRouter();
   const { setIsCartOpen, cartCount } = useCart();
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) setUser(data.user);
+    });
+  }, []);
 
   useEffect(() => {
     if (isSearchOpen || isMobileMenuOpen) {
@@ -81,6 +90,9 @@ export default function Navbar() {
           <button onClick={() => setIsSearchOpen(true)} className="hover:text-gray-500 transition-colors">
             Search
           </button>
+          <Link href={user ? '/account' : '/login'} className="hidden md:inline hover:text-gray-500 transition-colors">
+            {user ? 'Account' : 'Sign In'}
+          </Link>
           <button 
             onClick={() => setIsCartOpen(true)}
             className="hover:text-gray-500 transition-colors"
@@ -163,6 +175,9 @@ export default function Navbar() {
                   {link.name}
                 </Link>
               ))}
+              <Link href={user ? '/account' : '/login'} onClick={() => setIsMobileMenuOpen(false)} className="text-base font-sans tracking-[0.2em]">
+                {user ? 'Account' : 'Sign In'}
+              </Link>
            </div>
         </div>
       )}
