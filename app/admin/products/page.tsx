@@ -24,6 +24,8 @@ interface ProductForm {
   category: string;
   description: string;
   fabric: string;
+  highlights: string[];
+  care: string[];
   uploadedImages: string[];
   colors: string[];
   sizes: string[];
@@ -40,6 +42,8 @@ const defaultForm: ProductForm = {
   category: 'Tops',
   description: '',
   fabric: '',
+  highlights: [],
+  care: [],
   uploadedImages: [],
   colors: [],
   sizes: [],
@@ -87,6 +91,8 @@ export default function AdminProducts() {
         category: product.category,
         description: product.description || '',
         fabric: product.fabric || '',
+        highlights: product.highlights || [],
+        care: product.care || [],
         uploadedImages: product.images || [],
         colors: product.colors || [],
         sizes: product.sizes || [],
@@ -122,6 +128,8 @@ export default function AdminProducts() {
       category: form.category,
       description: form.description,
       fabric: form.fabric,
+      highlights: form.highlights,
+      care: form.care,
       images: form.uploadedImages,
       colors: form.colors,
       sizes: form.sizes,
@@ -374,24 +382,37 @@ export default function AdminProducts() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-8">
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-widest font-bold">Category</label>
+                <select
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  className="w-full border-b border-black py-3 text-sm focus:outline-none bg-transparent"
+                >
+                  <option>Tops</option>
+                  <option>Bottoms</option>
+                  <option>Outerwear</option>
+                  <option>Footwear</option>
+                  <option>Dresses</option>
+                  <option>Accessories</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-widest font-bold">Description</label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  className="w-full border-b border-black py-3 text-sm focus:outline-none min-h-[100px]"
+                  placeholder="PRODUCT DETAILS..."
+                />
+              </div>
+
+              <div className="pt-4 border-t border-black/5 space-y-6">
+                <span className="text-[11px] font-bold uppercase tracking-widest">Material & Care</span>
+
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-widest font-bold">Category</label>
-                  <select
-                    value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="w-full border-b border-black py-3 text-sm focus:outline-none bg-transparent"
-                  >
-                    <option>Tops</option>
-                    <option>Bottoms</option>
-                    <option>Outerwear</option>
-                    <option>Footwear</option>
-                    <option>Dresses</option>
-                    <option>Accessories</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-widest font-bold">Fabric</label>
+                  <label className="text-[10px] uppercase tracking-widest font-bold">Material</label>
                   <select
                     value={form.fabric}
                     onChange={(e) => setForm({ ...form, fabric: e.target.value })}
@@ -403,16 +424,26 @@ export default function AdminProducts() {
                     ))}
                   </select>
                 </div>
-              </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-widest font-bold">Description</label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full border-b border-black py-3 text-sm focus:outline-none min-h-[100px]"
-                  placeholder="PRODUCT DETAILS..."
-                />
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-widest font-bold">Highlights (one per line)</label>
+                  <textarea
+                    value={form.highlights.join('\n')}
+                    onChange={(e) => setForm({ ...form, highlights: e.target.value.split('\n').map(l => l.trim()).filter(Boolean) })}
+                    className="w-full border-b border-black py-3 text-sm focus:outline-none min-h-[80px]"
+                    placeholder={'BOX PLEATED PANEL\nBRASS HARDWARE\nFULLY LINED'}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-widest font-bold">Care Instructions (one per line)</label>
+                  <textarea
+                    value={form.care.join('\n')}
+                    onChange={(e) => setForm({ ...form, care: e.target.value.split('\n').map(l => l.trim()).filter(Boolean) })}
+                    className="w-full border-b border-black py-3 text-sm focus:outline-none min-h-[80px]"
+                    placeholder={'DRY CLEAN ONLY\nIRON ON LOW HEAT\nSTORE IN A COOL, DRY PLACE'}
+                  />
+                </div>
               </div>
 
               <div className="space-y-3">

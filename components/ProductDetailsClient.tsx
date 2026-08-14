@@ -10,11 +10,13 @@ import ProductReviews from './ProductReviews';
 
 export default function ProductDetailsClient({ product }: { product: Product }) {
   const { addToCart } = useCart();
+  const images = (product.images || []).filter((img: string) => img && img.trim());
   const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] || 'M');
   const [selectedColor, setSelectedColor] = useState(product.colors?.[0] || '');
   const [quantity, setQuantity] = useState(1);
-  const [selectedImage, setSelectedImage] = useState(product.images[0]);
+  const [selectedImage, setSelectedImage] = useState(images[0] || '');
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [openSection, setOpenSection] = useState<string | null>('description');
 
   useEffect(() => {
     const fetchRelated = async () => {
@@ -34,20 +36,28 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
   return (
     <div className="flex flex-col">
       <main className="flex-grow grid grid-cols-1 md:grid-cols-2 min-h-[calc(100vh-80px)]">
-        <div className="relative bg-gray-50 min-h-[50vh] md:min-h-auto border-b md:border-b-0 md:border-r border-black flex flex-col">
-           <div className="relative flex-grow">
-             <Image
-               src={selectedImage}
-               alt={product.name}
-               fill
-               className="object-cover"
-               priority
-               unoptimized
-             />
+        <div className="relative bg-gray-50 border-b md:border-b-0 md:border-r border-black flex flex-col">
+           <div className="relative flex-1 min-h-[65vh] flex items-center justify-center p-4 md:p-8">
+             <div className="relative aspect-[9/16] h-[70vh] w-auto max-h-full max-w-full">
+               {selectedImage ? (
+                 <Image
+                   src={selectedImage}
+                   alt={product.name}
+                   fill
+                   className="object-cover"
+                   priority
+                   unoptimized
+                 />
+               ) : (
+                 <div className="absolute inset-0 flex items-center justify-center text-gray-300 text-[10px] uppercase tracking-widest">
+                   No Image
+                 </div>
+               )}
+             </div>
            </div>
-           {product.images.length > 1 && (
+           {images.length > 1 && (
              <div className="flex gap-2 p-4 overflow-x-auto bg-white border-t border-gray-100">
-               {product.images.map((img, idx) => (
+               {images.map((img, idx) => (
                  <button
                    key={idx}
                    onClick={() => setSelectedImage(img)}
@@ -77,9 +87,6 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
                {product.name}
              </h1>
              <p className="text-xl font-light mb-8">₹{product.price}</p>
-             <div className="prose prose-sm max-w-none text-gray-500 mb-12 uppercase text-[10px] tracking-widest leading-loose font-light">
-               <p>{product.description}</p>
-             </div>
           </div>
 
           <div className="space-y-8">
@@ -154,6 +161,68 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
                    <span>Secure Checkout</span>
                 </div>
              </div>
+          </div>
+
+          <div className="mt-16 border-t border-gray-100 divide-y divide-gray-100">
+            <div>
+              <button
+                onClick={() => setOpenSection(openSection === 'description' ? null : 'description')}
+                className="w-full flex justify-between items-center py-5 text-left"
+              >
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Description</span>
+                <span className="text-gray-400 text-sm font-light">{openSection === 'description' ? '−' : '+'}</span>
+              </button>
+              {openSection === 'description' && (
+                <div className="pb-8">
+                  {product.description && (
+                    <p className="text-[11px] text-gray-500 leading-relaxed mb-5">{product.description}</p>
+                  )}
+                  {product.highlights && product.highlights.length > 0 && (
+                    <ul className="space-y-2">
+                      {product.highlights.map((h, i) => (
+                        <li key={i} className="flex gap-3 text-[10px] uppercase tracking-widest text-gray-500">
+                          <span className="text-black">—</span>
+                          <span>{h}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <button
+                onClick={() => setOpenSection(openSection === 'care' ? null : 'care')}
+                className="w-full flex justify-between items-center py-5 text-left"
+              >
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Material & Care</span>
+                <span className="text-gray-400 text-sm font-light">{openSection === 'care' ? '−' : '+'}</span>
+              </button>
+              {openSection === 'care' && (
+                <div className="pb-8 space-y-6">
+                  {product.fabric && (
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest block mb-2">Material</span>
+                      <p className="text-[11px] text-gray-500 uppercase tracking-widest">{product.fabric}</p>
+                    </div>
+                  )}
+                  {product.care && product.care.length > 0 && (
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest block mb-3">Care</span>
+                      <ul className="space-y-2">
+                        {product.care.map((c, i) => (
+                          <li key={i} className="flex gap-3 text-[10px] uppercase tracking-widest text-gray-500">
+                            <span className="text-black">—</span>
+                            <span>{c}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </main>

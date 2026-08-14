@@ -121,7 +121,7 @@ INSERT INTO products (name, price, category, description, images, colors, sizes,
 -- Seed collections
 INSERT INTO collections (name, slug, image, description) VALUES
 ('New Arrivals', 'new-arrivals', 'https://images.unsplash.com/photo-1760512901586-f70030a53cd1?auto=format&fit=crop&w=800&q=80', 'The latest additions to our collection'),
-('Essentials', 'essentials', 'https://images.unsplash.com/photo-1632497775897-815042a13216?auto=format&fit=crop&w=800&q=80', 'Timeless wardrobe staples'),
+('Bealuxe', 'bealuxe', 'https://images.unsplash.com/photo-1632497775897-815042a13216?auto=format&fit=crop&w=800&q=80', 'Timeless wardrobe staples'),
 ('Accessories', 'accessories', 'https://images.unsplash.com/photo-1618333453613-2ccb4967e610?auto=format&fit=crop&w=800&q=80', 'Curated accessories collection')
 ON CONFLICT (slug) DO NOTHING;
 

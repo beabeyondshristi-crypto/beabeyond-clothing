@@ -11,19 +11,40 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const { addToCart } = useCart();
+  const images = (product.images || []).filter((img: string) => img && img.trim());
+  const primaryImage = images[0] || null;
+  const hoverImage = images[1] || null;
 
   return (
     <div className="group block transition-opacity duration-300 relative">
       <Link href={`/product/${product.id}`}>
         <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-50 mb-3 border border-transparent group-hover:border-black/10 transition-colors">
-          <Image
-            src={product.images[0]}
-            alt={product.name}
-            fill
-            className="object-cover object-center transition-transform duration-700 group-hover:scale-105"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            unoptimized 
-          />
+          {primaryImage ? (
+            <>
+              <Image
+                src={primaryImage}
+                alt={product.name}
+                fill
+                className="object-cover object-center transition-opacity duration-500 group-hover:opacity-0"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                unoptimized
+              />
+              {hoverImage && (
+                <Image
+                  src={hoverImage}
+                  alt={`${product.name} hover`}
+                  fill
+                  className="object-cover object-center transition-opacity duration-500 opacity-0 group-hover:opacity-100"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  unoptimized
+                />
+              )}
+            </>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-gray-300 text-[10px] uppercase tracking-widest">
+              No Image
+            </div>
+          )}
         </div>
       </Link>
       
