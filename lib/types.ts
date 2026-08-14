@@ -6,6 +6,8 @@ export interface Product {
   images: string[];
   description: string;
   fabric: string;
+  highlights: string[];
+  care: string[];
   colors: string[];
   sizes: string[];
   is_new_arrival: boolean;

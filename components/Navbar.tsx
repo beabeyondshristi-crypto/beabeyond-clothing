@@ -74,7 +74,7 @@ export default function Navbar() {
   const navLinks = [
     { name: 'Shop All', href: '/shop' },
     { name: 'New Arrivals', href: '/new-arrivals' },
-    { name: 'Essentials', href: '/essentials' },
+    { name: 'Bealuxe', href: '/bealuxe' },
     { name: 'Trending', href: '/trending' },
     { name: 'Collections', href: '/collections' },
   ];

@@ -8,7 +8,7 @@ import type { HomepageSection } from '@/lib/types';
 export default async function Essentials() {
   const supabase = await createClient();
 
-  const sectionsRes = await supabase.from('homepage_sections').select('*').eq('page', 'essentials').eq('is_visible', true).order('sort_order');
+  const sectionsRes = await supabase.from('homepage_sections').select('*').eq('page', 'bealuxe').eq('is_visible', true).order('sort_order');
   const productsRes = await supabase.from('products').select('*').order('created_at', { ascending: false }).limit(10);
 
   const sections = (sectionsRes.data || []) as HomepageSection[];

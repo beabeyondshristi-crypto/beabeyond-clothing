@@ -12,9 +12,9 @@ INSERT INTO homepage_sections (page, section_type, title, subtitle, description,
 ('new-arrivals', 'content', 'The Concept', 'This season, we explore the duality of soft and hard. Taking inspiration from brutalist architecture and natural landscapes, the new collection features sharp tailoring softened by fluid drapes. A monochrome palette serves as the canvas for texture and form.', '', '', '/shop', 'View Lookbook', 2, '{"badge": "Collection 01"}')
 ON CONFLICT DO NOTHING;
 
--- Seed sections for /essentials
+-- Seed sections for /bealuxe
 INSERT INTO homepage_sections (page, section_type, title, subtitle, description, image_url, link_url, link_text, sort_order, settings) VALUES
-('essentials', 'content', 'Wardrobe Foundation.', 'Trends fade, but essentials remain. Discover the pieces you''ll reach for every single day. Impeccable tailoring, premium fabrics, and neutral tones designed to be mixed and matched.', '', 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80', '/shop', 'Shop All Categories', 1, '{"badge": "The Core Collection"}')
+('bealuxe', 'content', 'Wardrobe Foundation.', 'Trends fade, but essentials remain. Discover the pieces you''ll reach for every single day. Impeccable tailoring, premium fabrics, and neutral tones designed to be mixed and matched.', '', 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80', '/shop', 'Shop All Categories', 1, '{"badge": "The Core Collection"}')
 ON CONFLICT DO NOTHING;
 
 -- Seed sections for /trending

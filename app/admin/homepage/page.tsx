@@ -7,7 +7,7 @@ import { compressImage } from '@/lib/image-compress';
 const PAGES = [
   { value: 'home', label: 'Homepage' },
   { value: 'new-arrivals', label: 'New Arrivals' },
-  { value: 'essentials', label: 'Essentials' },
+  { value: 'bealuxe', label: 'Bealuxe' },
   { value: 'trending', label: 'Trending' },
   { value: 'shop', label: 'Shop All' },
   { value: 'collections', label: 'Collections' },
@@ -362,6 +362,19 @@ export default function AdminHomepage() {
                     placeholder="Longer description text..."
                   />
                 </div>
+
+                {['editorial', 'content', 'feature'].includes(form.section_type) && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase tracking-widest font-bold">Badge</label>
+                    <input
+                      type="text"
+                      value={String(form.settings?.badge || '')}
+                      onChange={(e) => setForm({ ...form, settings: { ...form.settings, badge: e.target.value } })}
+                      className="w-full border-b border-black py-3 text-sm focus:outline-none"
+                      placeholder="E.G. NEW SEASON"
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-3">
                   <label className="text-[10px] uppercase tracking-widest font-bold">Primary Image</label>
