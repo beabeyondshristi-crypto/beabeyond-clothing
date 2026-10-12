@@ -1,177 +1,192 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type { InventoryItem } from '@/lib/types';
+import { useCallback, useEffect, useState } from 'react';
+import Image from 'next/image';
+import type { Product } from '@/lib/types';
+import { availableStock, isLowStock, isSoldOut, soldOutAt } from '@/lib/stock';
+import { api, Button, Card, EmptyState, inr, Input, PageHeader, SearchInput, Skeleton, Stat, Tabs, useToast } from '@/components/admin/ui';
 
-export default function AdminInventory() {
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
-  const [stockChange, setStockChange] = useState('');
-  const [stockReason, setStockReason] = useState('');
+type Filter = 'all' | 'low' | 'out';
 
-  const fetchInventory = async () => {
+export default function InventoryPage() {
+  const toast = useToast();
+  const [products, setProducts] = useState<Product[] | null>(null);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [search, setSearch] = useState('');
+  const [amounts, setAmounts] = useState<Record<string, string>>({});
+  const [thresholds, setThresholds] = useState<Record<string, string>>({});
+  const [bulk, setBulk] = useState('0');
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = useCallback(async () => setProducts(await api<Product[]>('/api/admin/products')), []);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('filter') === 'low') setFilter('low');
+    load().catch((e) => toast(e.message, 'error'));
+  }, [load, toast]);
+
+  const needsRestock = (p: Product) => isSoldOut(p) || isLowStock(p);
+  const list = (products || []).filter((p) => {
+    if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (filter === 'low') return needsRestock(p);
+    if (filter === 'out') return isSoldOut(p);
+    return true;
+  }).sort((a, b) => availableStock(a) - availableStock(b));
+
+  const adjust = async (p: Product, change: number, reason: string) => {
+    if (!change) return;
+    if (p.stock + change < 0) { toast('Stock can’t go below zero', 'error'); return; }
+    setBusy(p.id);
     try {
-      const res = await fetch('/api/admin/inventory');
-      const data = await res.json();
-      if (Array.isArray(data)) setItems(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+      await api('/api/admin/inventory', { method: 'POST', json: { product_id: p.id, change, reason } });
+      setProducts((prev) => prev?.map((x) => (x.id === p.id ? { ...x, stock: x.stock + change } : x)) || null);
+      setAmounts((a) => ({ ...a, [p.id]: '' }));
+      toast(`${p.name}: ${change > 0 ? '+' : ''}${change} → ${p.stock + change}`);
+    } catch (e) { toast(e instanceof Error ? e.message : 'Update failed', 'error'); }
+    finally { setBusy(null); }
   };
 
-  useEffect(() => { fetchInventory(); }, []);
-
-  const updateStock = async (productId: string) => {
-    const change = parseInt(stockChange);
-    if (isNaN(change) || change === 0) return;
-
+  const saveThreshold = async (p: Product) => {
+    const raw = thresholds[p.id];
+    if (raw === undefined) return;
+    const value = Math.max(0, Math.floor(Number(raw) || 0));
+    setThresholds((t) => { const next = { ...t }; delete next[p.id]; return next; });
+    if (value === soldOutAt(p)) return;
     try {
-      await fetch('/api/admin/inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ product_id: productId, change, reason: stockReason }),
-      });
-      setEditingItem(null);
-      setStockChange('');
-      setStockReason('');
-      fetchInventory();
-    } catch (e) {
-      console.error(e);
-    }
+      await api(`/api/admin/products/${p.id}`, { method: 'PUT', json: { out_of_stock_threshold: value } });
+      setProducts((prev) => prev?.map((x) => (x.id === p.id ? { ...x, out_of_stock_threshold: value } : x)) || null);
+      toast(`${p.name}: sold out at ${value}`);
+    } catch (e) { toast(e instanceof Error ? e.message : 'Update failed', 'error'); }
   };
 
-  const lowStockItems = items.filter(i => i.stock <= i.low_stock_threshold);
-  const outOfStock = items.filter(i => i.stock === 0);
-  const healthyStock = items.filter(i => i.stock > i.low_stock_threshold);
+  const applyBulk = async () => {
+    const value = Math.max(0, Math.floor(Number(bulk) || 0));
+    if (!confirm(`Mark every product sold out when its stock is at or below ${value}?`)) return;
+    try {
+      const { updated } = await api<{ updated: number }>('/api/admin/inventory', { method: 'PUT', json: { threshold: value } });
+      setProducts((prev) => prev?.map((x) => ({ ...x, out_of_stock_threshold: value })) || null);
+      toast(`Sold-out level set to ${value} for ${updated} products`);
+    } catch (e) { toast(e instanceof Error ? e.message : 'Update failed', 'error'); }
+  };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-[10px] uppercase tracking-[0.3em] text-gray-400">Loading...</p>
-      </div>
-    );
-  }
+  const sellable = (products || []).reduce((n, p) => n + availableStock(p), 0);
+  const held = (products || []).reduce((n, p) => n + Math.min(p.stock, soldOutAt(p)), 0);
+  const value = (products || []).reduce((n, p) => n + p.stock * p.price, 0);
 
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-8 border border-black/5 shadow-sm">
-          <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-2 font-bold">Total Items</p>
-          <p className="text-3xl font-serif">{items.length}</p>
-        </div>
-        <div className="bg-white p-8 border border-black/5 shadow-sm">
-          <p className="text-[10px] uppercase tracking-widest text-red-400 mb-2 font-bold">Low Stock</p>
-          <p className="text-3xl font-serif text-red-500">{lowStockItems.length}</p>
-        </div>
-        <div className="bg-white p-8 border border-black/5 shadow-sm">
-          <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-2 font-bold">Out of Stock</p>
-          <p className="text-3xl font-serif">{outOfStock.length}</p>
-        </div>
+    <div>
+      <PageHeader
+        eyebrow="Store"
+        title="Inventory"
+        description="Stock goes down automatically with every order and comes back if an order is cancelled. Choose how low stock can go before a product shows as sold out."
+      />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {products ? (
+          <>
+            <Stat label="Sellable units" value={sellable.toLocaleString('en-IN')} hint={held ? `${held} held back` : undefined} />
+            <Stat label="Stock value (retail)" value={inr(value)} />
+            <Stat label="Low stock" value={String(products.filter(isLowStock).length)} hint="at or below alert level" />
+            <Stat label="Sold out" value={String(products.filter(isSoldOut).length)} />
+          </>
+        ) : [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[118px]" />)}
       </div>
 
-      {lowStockItems.length > 0 && (
-        <div className="bg-red-50 border border-red-200 shadow-sm p-6">
-          <h2 className="text-[10px] font-bold uppercase tracking-widest text-red-600 mb-4">
-            Low Stock Alert — {lowStockItems.length} products need attention
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {lowStockItems.map(item => (
-              <span key={item.product_id} className="text-[9px] bg-red-100 text-red-700 px-2 py-1 uppercase tracking-widest">
-                {item.product_name} ({item.stock} left)
-              </span>
-            ))}
+      <Card className="mb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold">Sold-out level</p>
+            <p className="text-[11px] text-gray-500 mt-1 max-w-xl">
+              A product shows as <strong>Sold out</strong> (and can’t be bought) once its stock reaches this number. Use it to keep a few units back for exchanges or damages. 0 sells every unit.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-500 whitespace-nowrap">Sold out at ≤</span>
+            <Input type="number" min={0} value={bulk} onChange={(e) => setBulk(e.target.value)} className="w-20" aria-label="Sold-out level for all products" />
+            <Button variant="secondary" onClick={applyBulk}>Apply to All</Button>
           </div>
         </div>
-      )}
+      </Card>
 
-      <div className="bg-white border border-black/5 shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-gray-50 border-b border-black/5">
-            <tr>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-gray-400">Product</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-gray-400">In Stock</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-gray-400">Threshold</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-gray-400">Status</th>
-              <th className="px-6 py-4 text-right text-[10px] uppercase tracking-widest font-bold text-gray-400">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-black/5">
-            {items.map((item) => {
-              const status = item.stock === 0 ? 'Out of Stock' : item.stock <= item.low_stock_threshold ? 'Low Stock' : 'In Stock';
-              const statusColor = item.stock === 0 ? 'text-red-500' : item.stock <= item.low_stock_threshold ? 'text-orange-500' : 'text-green-600';
-              return (
-                <tr key={item.product_id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <p className="text-[11px] font-bold uppercase tracking-widest">{item.product_name}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-sm font-serif font-bold ${statusColor}`}>{item.stock}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-[10px] text-gray-400">{item.low_stock_threshold}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-[8px] px-2 py-1 uppercase tracking-[0.2em] font-bold ${statusColor} bg-opacity-10`}>
-                      {status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => setEditingItem(editingItem?.product_id === item.product_id ? null : item)}
-                      className="text-[10px] uppercase tracking-widest font-bold text-gray-400 hover:text-black transition-colors"
-                    >
-                      {editingItem?.product_id === item.product_id ? 'Cancel' : 'Update Stock'}
-                    </button>
-                  </td>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+        <Tabs<Filter> value={filter} onChange={setFilter} options={[
+          { value: 'all', label: 'All', count: products?.length },
+          { value: 'low', label: 'Needs Restock', count: products?.filter(needsRestock).length },
+          { value: 'out', label: 'Sold Out', count: products?.filter(isSoldOut).length },
+        ]} />
+        <SearchInput value={search} onChange={setSearch} placeholder="Search products" />
+      </div>
+
+      <Card padded={false}>
+        {!products ? (
+          <div className="p-5 space-y-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-14" />)}</div>
+        ) : list.length === 0 ? (
+          <EmptyState title="All stocked up" text="No products match this filter." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[900px]">
+              <thead>
+                <tr className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400 border-b border-black/10">
+                  <th className="px-5 py-3 font-bold">Product</th><th className="px-5 py-3 font-bold">Status</th>
+                  <th className="px-5 py-3 font-bold text-right">In Stock</th><th className="px-5 py-3 font-bold text-right">Sellable</th>
+                  <th className="px-5 py-3 font-bold">Sold Out At</th><th className="px-5 py-3 font-bold">Quick Adjust</th><th className="px-5 py-3 font-bold">Custom</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {editingItem && (
-        <div className="bg-white border border-black/5 shadow-sm p-8">
-          <h3 className="text-sm font-serif uppercase tracking-tight mb-6">
-            Update Stock: {editingItem.product_name}
-          </h3>
-          <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-6">
-            Current Stock: <span className="font-bold text-black">{editingItem.stock}</span>
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-widest font-bold">Change Quantity</label>
-              <input
-                type="number"
-                value={stockChange}
-                onChange={(e) => setStockChange(e.target.value)}
-                className="w-full border-b border-black py-3 text-sm focus:outline-none"
-                placeholder="+10 or -5"
-              />
-              <p className="text-[8px] text-gray-400 mt-1">Use + to add, - to subtract</p>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-widest font-bold">Reason</label>
-              <input
-                type="text"
-                value={stockReason}
-                onChange={(e) => setStockReason(e.target.value)}
-                className="w-full border-b border-black py-3 text-sm focus:outline-none"
-                placeholder="E.G. STOCK COUNT, RETURN"
-              />
-            </div>
-            <button
-              onClick={() => updateStock(editingItem.product_id)}
-              className="bg-black text-white px-8 py-3 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-800 transition-colors h-fit"
-            >
-              Apply Change
-            </button>
+              </thead>
+              <tbody>
+                {list.map((p) => {
+                  const sellableUnits = availableStock(p);
+                  const threshold = p.low_stock_threshold || 5;
+                  const fill = Math.min(100, (sellableUnits / Math.max(threshold * 4, 1)) * 100);
+                  const amount = Number(amounts[p.id] || 0);
+                  return (
+                    <tr key={p.id} className="border-b border-black/5 last:border-0 text-xs">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-9 h-11 bg-gray-50 shrink-0 overflow-hidden">{p.images?.[0] && <Image src={p.images[0]} alt="" fill className="object-cover" unoptimized />}</div>
+                          <div className="min-w-0"><p className="font-semibold truncate">{p.name}</p><p className="text-[10px] text-gray-400">{p.category} · low alert at {threshold}</p></div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 w-36">
+                        <div className="h-1.5 bg-gray-100"><div className={`h-1.5 ${isSoldOut(p) ? 'bg-gray-300' : 'bg-black'}`} style={{ width: `${fill}%` }} /></div>
+                        <p className="text-[9px] font-bold uppercase tracking-[0.15em] mt-1.5 text-gray-500">{isSoldOut(p) ? 'Sold out' : isLowStock(p) ? 'Low' : 'Healthy'}</p>
+                      </td>
+                      <td className="px-5 py-3 text-right tabular-nums text-gray-500">{p.stock}</td>
+                      <td className="px-5 py-3 text-right text-base font-semibold tabular-nums">{sellableUnits}</td>
+                      <td className="px-5 py-3">
+                        <Input
+                          type="number" min={0}
+                          value={thresholds[p.id] ?? String(soldOutAt(p))}
+                          onChange={(e) => setThresholds((t) => ({ ...t, [p.id]: e.target.value }))}
+                          onBlur={() => saveThreshold(p)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                          className="w-16 h-8"
+                          aria-label={`Sold-out level for ${p.name}`}
+                        />
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex">
+                          {[-1, 1, 10].map((n, i) => (
+                            <button key={n} disabled={busy === p.id || p.stock + n < 0} onClick={() => adjust(p, n, n > 0 ? 'Restock' : 'Manual correction')}
+                              className={`w-10 h-8 border border-black/15 hover:border-black disabled:opacity-30 text-[11px] font-semibold ${i ? 'border-l-0' : ''}`}>
+                              {n > 0 ? `+${n}` : n}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex gap-2">
+                          <Input type="number" value={amounts[p.id] || ''} onChange={(e) => setAmounts((a) => ({ ...a, [p.id]: e.target.value }))} placeholder="±0" className="w-20 h-8" aria-label={`Adjust ${p.name}`} />
+                          <Button size="sm" variant="secondary" disabled={!amount || busy === p.id} onClick={() => adjust(p, amount, amount > 0 ? 'Restock' : 'Stock correction')}>Apply</Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </div>
-      )}
+        )}
+      </Card>
     </div>
   );
 }

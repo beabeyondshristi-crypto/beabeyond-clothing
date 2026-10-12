@@ -2,8 +2,11 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
+import ProductGridSkeleton from '@/components/ProductGridSkeleton';
 import type { Product } from '@/lib/data';
 
 function ShopContent() {
@@ -102,26 +105,74 @@ function ShopContent() {
     return (
       <div className="min-h-screen flex flex-col font-sans">
         <Navbar />
-        <div className="flex-grow flex items-center justify-center">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-gray-400">Loading...</p>
+        <div className="border-b border-black px-6 md:px-12 py-14">
+          <div className="h-2 w-24 bg-gray-100 animate-pulse mb-6" />
+          <div className="h-10 w-64 bg-gray-100 animate-pulse" />
+        </div>
+        <div className="flex-grow p-6 md:p-12">
+          <ProductGridSkeleton count={6} />
         </div>
       </div>
     );
   }
 
+  const queryParam = searchParams.get('q');
+  const countFor = (cat: string) => allProducts.filter((p) => p.category === cat).length;
+  const priceFiltered = priceRange[0] > 0 || priceRange[1] < 500;
+  const activeFilters = (selectedCategory ? 1 : 0) + (priceFiltered ? 1 : 0);
+  const title = queryParam ? `“${queryParam}”` : selectedCategory || 'All Products';
+
   return (
     <div className="min-h-screen flex flex-col font-sans">
       <Navbar />
 
-      <div className="md:hidden sticky top-[60px] z-30 bg-white border-b border-black flex justify-between items-center px-6 py-4">
+      <header className="border-b border-black px-6 md:px-12 pt-10 pb-10 md:pt-14 md:pb-12">
+        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-[9px] uppercase tracking-[0.25em] text-gray-400 mb-8">
+          <Link href="/" className="hover:text-black transition-colors">Home</Link>
+          <span>/</span>
+          {selectedCategory || queryParam ? (
+            <>
+              <Link href="/shop" className="hover:text-black transition-colors">Shop</Link>
+              <span>/</span>
+              <span className="text-black font-bold">{queryParam ? 'Search' : selectedCategory}</span>
+            </>
+          ) : (
+            <span className="text-black font-bold">Shop</span>
+          )}
+        </nav>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <span className="block text-[9px] font-bold uppercase tracking-[0.4em] text-gray-400 mb-4">
+              {queryParam ? 'Search Results' : 'The Shop'}
+            </span>
+            <h1 className="text-4xl md:text-6xl font-normal font-serif uppercase tracking-tighter leading-[0.9]">{title}</h1>
+          </div>
+          <div className="hidden md:flex items-center gap-6">
+            <span className="text-[10px] text-gray-400 uppercase tracking-widest tabular-nums">{filteredProducts.length} Products</span>
+            <div className="h-4 w-px bg-black/20" />
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value)}
+              aria-label="Sort products"
+              className="text-[10px] font-bold uppercase tracking-[0.2em] outline-none bg-transparent cursor-pointer hover:opacity-50"
+            >
+              <option value="newest">Sort: Newest</option>
+              <option value="price-asc">Sort: Price Low</option>
+              <option value="price-desc">Sort: Price High</option>
+            </select>
+          </div>
+        </div>
+      </header>
+
+      <div className="md:hidden sticky top-16 z-30 bg-white border-b border-black flex justify-between items-center px-6 h-12">
         <button
            onClick={() => setIsFilterOpen(true)}
            className="text-[10px] font-bold uppercase tracking-[0.2em] flex items-center gap-2"
         >
            <span>Filters</span>
-           <span className="bg-black text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px]">
-             {(selectedCategory ? 1 : 0) + (priceRange[0] > 0 || priceRange[1] < 500 ? 1 : 0)}
-           </span>
+           {activeFilters > 0 && (
+             <span className="bg-black text-white w-4 h-4 flex items-center justify-center text-[8px]">{activeFilters}</span>
+           )}
         </button>
         <span className="text-[10px] text-gray-400 uppercase tracking-widest">{filteredProducts.length} Items</span>
       </div>
@@ -129,10 +180,10 @@ function ShopContent() {
       <main className="flex-grow flex flex-col md:flex-row">
 
         <aside className={`
-            fixed inset-0 z-[60] bg-white transform transition-transform duration-300 md:translate-x-0 md:static md:w-64 md:border-r border-black md:block
+            fixed inset-0 z-[60] md:z-auto bg-white transform transition-transform duration-300 md:translate-x-0 md:static md:w-64 md:border-r border-black md:block
             ${isFilterOpen ? 'translate-x-0' : '-translate-x-full'}
         `}>
-          <div className="h-full overflow-y-auto p-8 md:p-12 md:sticky md:top-[65px] md:h-[calc(100vh-65px)] pb-32 md:pb-12">
+          <div className="h-full overflow-y-auto p-8 md:p-10 md:sticky md:top-16 md:h-[calc(100vh-64px)] pb-32 md:pb-10">
              <div className="flex justify-between items-center md:hidden mb-8">
                 <h2 className="text-xl font-serif uppercase">Filters</h2>
                 <button onClick={() => setIsFilterOpen(false)} className="text-2xl p-2">✕</button>
@@ -140,15 +191,16 @@ function ShopContent() {
 
              <div className="space-y-10">
                 <div>
-                   <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] mb-4 text-gray-900">Category</h3>
+                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-4 text-gray-900">Category</p>
                    <ul className="space-y-3">
                       {categories.map(cat => (
                         <li key={cat}>
                            <button
                              onClick={() => toggleCategory(cat)}
-                             className={`text-[11px] uppercase tracking-widest hover:text-black transition-colors text-left w-full ${selectedCategory === cat ? 'font-bold text-black border-l-2 border-black pl-2' : 'text-gray-400 font-medium'}`}
+                             className={`flex justify-between items-baseline text-[11px] uppercase tracking-widest hover:text-black transition-colors text-left w-full ${selectedCategory === cat ? 'font-bold text-black border-l-2 border-black pl-2' : 'text-gray-400 font-medium'}`}
                            >
-                             {cat}
+                             <span>{cat}</span>
+                             <span className="text-[9px] tabular-nums text-gray-300">{countFor(cat)}</span>
                            </button>
                         </li>
                       ))}
@@ -156,25 +208,27 @@ function ShopContent() {
                 </div>
 
                 <div>
-                   <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] mb-4 text-gray-900">Price Range</h3>
+                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-4 text-gray-900">Price Range</p>
                    <div className="flex gap-4 items-center mb-4">
-                      <div className="border border-gray-200 p-2 w-full text-center">
+                      <div className="border border-black/20 focus-within:border-black p-2 w-full flex items-center gap-1 transition-colors">
                         <span className="text-[10px] text-gray-500">₹</span>
                         <input
                            type="number"
+                           aria-label="Minimum price"
                            value={priceRange[0]}
                            onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
-                           className="w-8 text-[10px] outline-none text-center"
+                           className="w-full min-w-0 text-[10px] outline-none bg-transparent"
                         />
                       </div>
                       <span className="text-gray-300">-</span>
-                      <div className="border border-gray-200 p-2 w-full text-center">
+                      <div className="border border-black/20 focus-within:border-black p-2 w-full flex items-center gap-1 transition-colors">
                         <span className="text-[10px] text-gray-500">₹</span>
                         <input
                            type="number"
+                           aria-label="Maximum price"
                            value={priceRange[1]}
                            onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-                           className="w-8 text-[10px] outline-none text-center"
+                           className="w-full min-w-0 text-[10px] outline-none bg-transparent"
                         />
                       </div>
                    </div>
@@ -189,7 +243,7 @@ function ShopContent() {
                 </div>
 
                 <div className="md:hidden">
-                   <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] mb-4 text-gray-900">Sort By</h3>
+                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-4 text-gray-900">Sort By</p>
                    <select
                       value={sortOption}
                       onChange={(e) => setSortOption(e.target.value)}
@@ -221,24 +275,25 @@ function ShopContent() {
         </aside>
 
         <div className="flex-grow">
-           <div className="hidden md:flex justify-between items-center p-8 md:p-12 border-b border-gray-100">
-              <h1 className="text-2xl font-normal font-serif uppercase tracking-tighter">
-                 {selectedCategory ? selectedCategory : 'All Products'}
-              </h1>
-              <div className="flex items-center gap-4">
-                 <span className="text-[10px] text-gray-400 uppercase tracking-widest">{filteredProducts.length} Products</span>
-                 <div className="h-4 w-px bg-gray-200 mx-2"></div>
-                 <select
-                    value={sortOption}
-                    onChange={(e) => setSortOption(e.target.value)}
-                    className="text-[10px] font-bold uppercase tracking-[0.2em] outline-none bg-transparent cursor-pointer hover:opacity-50"
-                 >
-                    <option value="newest">Sort: Newest</option>
-                    <option value="price-asc">Sort: Price Low</option>
-                    <option value="price-desc">Sort: Price High</option>
-                 </select>
-              </div>
-           </div>
+           {(activeFilters > 0 || queryParam) && (
+             <div className="flex flex-wrap items-center gap-2 px-6 md:px-12 pt-6 md:pt-8">
+               {queryParam && (
+                 <button onClick={() => router.push('/shop')} className="border border-black px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-black hover:text-white transition-colors">
+                   Search: {queryParam} ✕
+                 </button>
+               )}
+               {selectedCategory && (
+                 <button onClick={() => toggleCategory(selectedCategory)} className="border border-black px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-black hover:text-white transition-colors">
+                   {selectedCategory} ✕
+                 </button>
+               )}
+               {priceFiltered && (
+                 <button onClick={() => setPriceRange([0, 500])} className="border border-black px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-black hover:text-white transition-colors">
+                   ₹{priceRange[0]}–₹{priceRange[1]} ✕
+                 </button>
+               )}
+             </div>
+           )}
 
            <div className="p-6 md:p-12">
               {filteredProducts.length > 0 ? (
@@ -249,8 +304,10 @@ function ShopContent() {
                 </div>
               ) : (
                 <div className="min-h-[50vh] flex flex-col items-center justify-center text-center">
-                   <p className="text-xl font-serif italic mb-4">No products found.</p>
-                   <button onClick={clearFilters} className="text-[10px] font-bold uppercase tracking-[0.2em] border-b border-black">
+                   <span className="font-serif text-7xl text-black/10 mb-6">0</span>
+                   <p className="text-2xl font-serif uppercase tracking-tighter mb-3">No Products Found</p>
+                   <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-8">Try adjusting your filters or search.</p>
+                   <button onClick={clearFilters} className="bg-black text-white border border-black px-8 py-3 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-colors">
                       Reset Filters
                    </button>
                 </div>
@@ -259,9 +316,7 @@ function ShopContent() {
         </div>
       </main>
 
-      <footer className="py-12 px-6 md:px-12 bg-white border-t border-black text-center text-[9px] text-gray-400 uppercase tracking-[0.2em]">
-          &copy; {new Date().getFullYear()} Beabeyond Retail Group.
-      </footer>
+      <Footer />
     </div>
   );
 }

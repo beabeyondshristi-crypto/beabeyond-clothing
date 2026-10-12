@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import AuthShell from '@/components/AuthShell';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -31,22 +32,21 @@ export default function LoginPage() {
       router.push(redirect);
       router.refresh();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Login failed';
+      const message = (err as { message?: string })?.message || 'Login failed';
       setError(message);
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-white">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-12">
-          <Link href="/" className="text-4xl font-serif uppercase tracking-tighter mb-4 inline-block">
-            Beabeyond
+    <AuthShell eyebrow="Welcome Back" title="Sign In" footer={
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-[10px] uppercase tracking-widest text-gray-400">New to Beabeyond?</span>
+          <Link href="/register" className="text-[10px] font-bold uppercase tracking-[0.2em] border-b border-black pb-0.5 hover:opacity-50 transition-opacity">
+            Create Account →
           </Link>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-gray-400">Sign In to Your Account</p>
         </div>
-
+      }>
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 p-4">
@@ -61,7 +61,7 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border-b border-black py-4 text-sm focus:outline-none placeholder:text-gray-200"
+              className="w-full border-b border-black/30 focus:border-black py-4 text-sm focus:outline-none placeholder:text-gray-300 transition-colors"
               placeholder="YOU@EXAMPLE.COM"
             />
           </div>
@@ -73,7 +73,7 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border-b border-black py-4 text-sm focus:outline-none placeholder:text-gray-200"
+              className="w-full border-b border-black/30 focus:border-black py-4 text-sm focus:outline-none placeholder:text-gray-300 transition-colors"
               placeholder="••••••••"
             />
           </div>
@@ -81,21 +81,11 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-black text-white py-5 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-800 transition-colors mt-8 disabled:bg-gray-400"
+            className="w-full bg-black text-white border border-black py-5 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-colors mt-8 disabled:bg-gray-400 disabled:border-gray-400 disabled:text-white"
           >
             {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
-
-        <div className="mt-8 text-center space-y-4">
-          <Link href="/register" className="block text-[10px] uppercase tracking-widest text-gray-600 hover:text-black underline underline-offset-4">
-            Create an Account
-          </Link>
-          <Link href="/" className="block text-[9px] uppercase tracking-widest text-gray-400 hover:text-black transition-colors">
-            Return to Store
-          </Link>
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

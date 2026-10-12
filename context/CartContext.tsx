@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { Product } from '@/lib/data';
+import { trackEvent } from '@/lib/track';
 
 interface CartItem extends Product {
   quantity: number;
@@ -67,6 +68,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return [...prevCart, { ...product, quantity, selectedSize: options?.size || '', selectedColor: options?.color || '' }];
     });
     setIsCartOpen(true);
+    trackEvent(product.id, 'add_to_cart');
   }, []);
 
   const removeFromCart = useCallback((productId: string) => {

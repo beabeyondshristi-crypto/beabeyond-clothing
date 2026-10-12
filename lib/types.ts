@@ -15,6 +15,7 @@ export interface Product {
   is_essential: boolean;
   stock: number;
   low_stock_threshold: number;
+  out_of_stock_threshold: number;
   created_at: string;
   updated_at: string;
 }
@@ -62,6 +63,8 @@ export interface Order {
   subtotal: number;
   shipping_cost: number;
   tax: number;
+  discount: number;
+  coupon_code: string | null;
   shipping_address: Record<string, string>;
   notes: string;
   items: OrderItem[];

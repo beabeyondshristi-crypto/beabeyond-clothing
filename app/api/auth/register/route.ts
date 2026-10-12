@@ -20,17 +20,19 @@ export async function POST(req: NextRequest) {
     if (authError) throw authError;
     if (!authData.user) throw new Error('Failed to create user');
 
-    // Create customer record with same ID as auth user
-    const { error: customerError } = await supabase.from('customers').insert({
-      id: authData.user.id,
-      email,
-      name,
-      phone: phone || '',
-    });
+    // Create the customer record now if signed in; when email confirmation is on there is no
+    // session yet, and /api/customers/me creates the record on first sign-in instead.
+    if (authData.session) {
+      const { error: customerError } = await supabase.from('customers').insert({
+        id: authData.user.id,
+        email,
+        name,
+        phone: phone || '',
+      });
+      if (customerError) throw customerError;
+    }
 
-    if (customerError) throw customerError;
-
-    return NextResponse.json({ success: true, user: { id: authData.user.id, email, name } }, { status: 201 });
+    return NextResponse.json({ success: true, needsConfirmation: !authData.session, user: { id: authData.user.id, email, name } }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: message }, { status: 500 });

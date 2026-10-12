@@ -1,102 +1,132 @@
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
 import { createClient } from '@/lib/supabase/server';
-import type { HomepageSection } from '@/lib/types';
+import type { HomepageSection, Product } from '@/lib/types';
+import { isLowStock } from '@/lib/stock';
 
 export default async function Trending() {
   const supabase = await createClient();
 
   const sectionsRes = await supabase.from('homepage_sections').select('*').eq('page', 'trending').eq('is_visible', true).order('sort_order');
-  const productsRes = await supabase.from('products').select('*').order('created_at', { ascending: false }).limit(8);
+  const productsRes = await supabase.from('products').select('*').order('created_at', { ascending: false });
 
   const sections = (sectionsRes.data || []) as HomepageSection[];
-  const allProducts = productsRes.data || [];
   const hero = sections.find(s => s.section_type === 'hero') || null;
-  const trendingProducts = allProducts.reverse();
+  // Products flagged as trending lead the list, the rest fill it out
+  const allProducts = (productsRes.data || []) as Product[];
+  const trendingProducts = [
+    ...allProducts.filter((p) => p.is_trending),
+    ...allProducts.filter((p) => !p.is_trending),
+  ].slice(0, 9);
+  const [top, ...rest] = trendingProducts;
+  const podium = rest.slice(0, 2);
+  const remaining = rest.slice(2);
+  const lowStock = allProducts.filter(isLowStock);
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
       <Navbar />
 
       <main className="flex-grow">
-        <section className="border-b border-black py-12 md:py-20 bg-black text-white overflow-hidden">
-           <div className="container mx-auto px-6 md:px-12 text-center">
-              <span className="text-[10px] font-bold uppercase tracking-[0.4em] mb-4 block text-gray-400">{hero?.description || 'The Hot List'}</span>
-              <h1 className="text-6xl md:text-9xl font-normal font-serif uppercase tracking-tighter leading-none">
-                 {hero?.title || 'Most Wanted'}
-              </h1>
-              <p className="mt-8 text-xs md:text-sm font-bold uppercase tracking-[0.2em] max-w-lg mx-auto text-gray-400">
-                 {hero?.subtitle || 'The pieces everyone is talking about.'}
+        <section className="border-b border-black py-20 md:py-28 bg-black text-white overflow-hidden">
+          <div className="px-6 md:px-12 text-center">
+            <span className="text-[9px] font-bold uppercase tracking-[0.4em] mb-6 block text-gray-500 animate-fade-up">{hero?.description || 'The Hot List'}</span>
+            <h1 className="text-6xl md:text-9xl font-normal font-serif uppercase tracking-tighter leading-none animate-fade-up" style={{ animationDelay: '150ms' }}>
+              {hero?.title || 'Most Wanted'}
+            </h1>
+            <p className="mt-8 text-[11px] md:text-xs font-light uppercase tracking-[0.25em] max-w-lg mx-auto text-gray-400 leading-loose animate-fade-up" style={{ animationDelay: '300ms' }}>
+              {hero?.subtitle || 'The pieces everyone is talking about.'}
+            </p>
+          </div>
+        </section>
+
+        {top && (
+          <section className="grid grid-cols-1 lg:grid-cols-12 border-b border-black">
+            <div className="lg:col-span-4 px-6 py-14 md:p-16 flex flex-col justify-center border-b lg:border-b-0 lg:border-r border-black bg-gray-50">
+              <span className="font-serif text-8xl md:text-9xl leading-none text-black/10 tabular-nums">01</span>
+              <span className="text-[9px] font-bold uppercase tracking-[0.4em] text-gray-400 mt-6 mb-3">Number One This Week</span>
+              <h2 className="text-3xl md:text-4xl font-serif uppercase tracking-tighter leading-none mb-4">{top.name}</h2>
+              <p className="text-[11px] text-gray-500 uppercase tracking-widest leading-loose mb-8 max-w-xs">{top.description}</p>
+              <Link
+                href={`/product/${top.id}`}
+                className="w-max bg-black text-white border border-black px-10 py-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-colors"
+              >
+                Shop Now — ₹{top.price}
+              </Link>
+            </div>
+            <div className="lg:col-span-8 grid grid-cols-2 lg:grid-cols-3 gap-6 p-6 md:p-12">
+              <div className="relative">
+                <span className="absolute top-14 right-3 z-10 bg-black text-white px-2 py-1 text-[8px] font-bold uppercase tracking-[0.2em] pointer-events-none">Best Seller</span>
+                <ProductCard product={top} />
+              </div>
+              {podium.map((product, i) => (
+                <div key={product.id}>
+                  <span className="block font-serif text-3xl leading-none mb-3 text-black/15 tabular-nums">{String(i + 2).padStart(2, '0')}</span>
+                  <ProductCard product={product} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="px-6 py-16 md:p-12">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-14">
+            {remaining.slice(0, 2).map((product, i) => (
+              <div key={product.id}>
+                <span className="block font-serif text-3xl leading-none mb-3 text-black/15 tabular-nums">{String(i + 4).padStart(2, '0')}</span>
+                <ProductCard product={product} />
+              </div>
+            ))}
+
+            <div className="col-span-2 bg-black text-white p-10 md:p-14 flex flex-col justify-center min-h-[320px] reveal">
+              <span className="font-serif text-6xl leading-none text-white/20 mb-4">&ldquo;</span>
+              <p className="font-serif text-2xl md:text-3xl italic leading-snug">
+                The silhouette of the season. Absolute perfection.
               </p>
-           </div>
+              <span className="mt-6 text-[9px] font-bold uppercase tracking-[0.4em] text-gray-500">— Vogue</span>
+            </div>
+
+            {remaining.slice(2).map((product, i) => (
+              <div key={product.id}>
+                <span className="block font-serif text-3xl leading-none mb-3 text-black/15 tabular-nums">{String(i + 6).padStart(2, '0')}</span>
+                <ProductCard product={product} />
+              </div>
+            ))}
+          </div>
         </section>
 
-        <section className="p-4 md:p-8">
-           <div className="columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8">
-
-              <div className="break-inside-avoid bg-gray-100 p-8 md:p-12 flex flex-col items-center justify-center text-center aspect-[3/4]">
-                 <span className="text-6xl md:text-8xl font-serif text-black/10">#1</span>
-                 <h2 className="text-3xl font-serif uppercase tracking-tighter mb-4">Top Rated</h2>
-                 <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-6">Structured Shirt</p>
-                 <Link href="/product/1" className="bg-black text-white px-8 py-3 text-[10px] font-bold uppercase tracking-[0.2em]">Shop Now</Link>
-              </div>
-
-              {trendingProducts.length > 0 && (
-                <div className="break-inside-avoid relative">
-                   <div className="absolute top-4 left-4 z-10 bg-black text-white px-3 py-1 text-[9px] font-bold uppercase tracking-widest">
-                      Best Seller
-                   </div>
-                   <ProductCard product={trendingProducts[0]} />
-                </div>
-              )}
-
-              {trendingProducts.length > 1 && (
-                <div className="break-inside-avoid">
-                   <ProductCard product={trendingProducts[1]} />
-                </div>
-              )}
-
-              <div className="break-inside-avoid bg-black text-white p-12 flex flex-col justify-center text-center">
-                 <p className="font-serif text-2xl italic leading-relaxed">
-                    &quot;The silhouette of the season. Absolute perfection.&quot;
-                 </p>
-                 <span className="mt-4 text-[9px] font-bold uppercase tracking-widest text-gray-500">— Vogue</span>
-              </div>
-
-              {trendingProducts.length > 2 && (
-                <div className="break-inside-avoid relative">
-                   <span className="absolute -top-4 -left-4 text-8xl font-serif text-black/5 z-0">02</span>
-                   <ProductCard product={trendingProducts[2]} />
-                </div>
-              )}
-
-              {trendingProducts.length > 3 && (
-                <div className="break-inside-avoid">
-                   <ProductCard product={trendingProducts[3]} />
-                </div>
-              )}
-
-               <div className="break-inside-avoid bg-gray-100 p-8 flex flex-col items-center justify-center text-center aspect-square">
-                 <h2 className="text-2xl font-serif uppercase tracking-tighter mb-2">Selling Fast</h2>
-                 <p className="text-[10px] uppercase tracking-widest text-red-500 font-bold mb-4">Low Stock on Accessories</p>
-                 <Link href="/shop?category=accessories" className="border-b border-black text-[10px] font-bold uppercase tracking-[0.2em]">View All</Link>
-              </div>
-
-               {trendingProducts.slice(4).map((product) => (
-                  <div key={product.id} className="break-inside-avoid">
-                      <ProductCard product={product} />
-                  </div>
-               ))}
-
-           </div>
+        <section className="grid grid-cols-1 md:grid-cols-2 border-t border-black">
+          <div className="px-6 py-16 md:p-20 bg-gray-50 flex flex-col justify-center border-b md:border-b-0 md:border-r border-black reveal">
+            <span className="text-[9px] font-bold uppercase tracking-[0.4em] text-gray-400 mb-6">Selling Fast</span>
+            <h2 className="text-3xl md:text-5xl font-serif uppercase tracking-tighter leading-none mb-6">Almost Gone</h2>
+            <p className="text-[11px] text-gray-500 uppercase tracking-widest leading-loose mb-8">
+              {lowStock.length > 0
+                ? `Only a few left of ${lowStock.slice(0, 2).map((p) => p.name).join(' and ')}.`
+                : 'Our most wanted pieces sell through quickly — don’t wait.'}
+            </p>
+            <Link
+              href={lowStock[0] ? `/product/${lowStock[0].id}` : '/shop'}
+              className="w-max text-[10px] font-bold uppercase tracking-[0.2em] border-b border-black pb-0.5 hover:opacity-50 transition-opacity"
+            >
+              Shop Before It&apos;s Gone →
+            </Link>
+          </div>
+          <div className="px-6 py-16 md:p-20 flex flex-col justify-center reveal">
+            <span className="text-[9px] font-bold uppercase tracking-[0.4em] text-gray-400 mb-6">Fresh In</span>
+            <h2 className="text-3xl md:text-5xl font-serif uppercase tracking-tighter leading-none mb-8">New Arrivals</h2>
+            <Link
+              href="/new-arrivals"
+              className="w-max bg-black text-white border border-black px-10 py-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-colors"
+            >
+              See What&apos;s New
+            </Link>
+          </div>
         </section>
-
       </main>
 
-      <footer className="py-12 px-6 md:px-12 bg-white border-t border-black text-center text-[9px] text-gray-400 uppercase tracking-[0.2em]">
-          &copy; {new Date().getFullYear()} Beabeyond Retail Group.
-      </footer>
+      <Footer />
     </div>
   );
 }

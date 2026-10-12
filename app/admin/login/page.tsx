@@ -2,7 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import AuthShell from '@/components/AuthShell';
 import { createClient } from '@/lib/supabase/client';
+import { USE_MOCK_DATA } from '@/lib/supabase/mock';
+import { MOCK_ADMIN } from '@/lib/supabase/mock-data';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -26,9 +29,10 @@ export default function AdminLogin() {
       if (sessionError) throw sessionError;
       if (!session) throw new Error('Session not created after login');
 
-      window.location.href = '/admin';
+      const redirect = new URLSearchParams(window.location.search).get('redirect');
+      window.location.href = redirect?.startsWith('/admin') ? redirect : '/admin';
     } catch (err) {
-      let message = err instanceof Error ? err.message : 'Login failed';
+      let message = (err as { message?: string })?.message || 'Login failed';
       // Check if Supabase is reachable
       if (message.includes('fetch') || message.includes('network') || message.includes('Failed to fetch')) {
         message = `Cannot reach Supabase at ${process.env.NEXT_PUBLIC_SUPABASE_URL}. Make sure your Supabase instance is running.`;
@@ -39,14 +43,32 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-white">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-12">
-          <Link href="/" className="text-4xl font-serif uppercase tracking-tighter mb-4 inline-block">
-            Beabeyond
+    <AuthShell eyebrow="Restricted Access" title="Admin" image="https://images.unsplash.com/photo-1570653321586-3bb42aaee967?auto=format&fit=crop&w=1400&q=80" quote="Beabeyond studio — store management." footer={
+        <div className="space-y-4">
+          <Link href="/" className="text-[9px] uppercase tracking-widest text-gray-400 hover:text-black transition-colors">
+            Return to Public Site
           </Link>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-gray-400">Restricted Access</p>
         </div>
+      }>
+        {/* Demo credentials are a development convenience — never shown on a production build */}
+        {(USE_MOCK_DATA || process.env.NODE_ENV !== 'production') && MOCK_ADMIN.password && (
+          <div className="border border-black p-5 mb-10">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400 mb-3">Demo Credentials</p>
+                <p className="text-[11px] font-mono">{MOCK_ADMIN.email}</p>
+                <p className="text-[11px] font-mono">{MOCK_ADMIN.password}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setEmail(MOCK_ADMIN.email); setPassword(MOCK_ADMIN.password); setError(''); }}
+                className="shrink-0 bg-black text-white border border-black px-4 py-2.5 text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-colors"
+              >
+                Fill In
+              </button>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
@@ -62,7 +84,7 @@ export default function AdminLogin() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border-b border-black py-4 text-sm focus:outline-none placeholder:text-gray-200"
+              className="w-full border-b border-black/30 focus:border-black py-4 text-sm focus:outline-none placeholder:text-gray-300 transition-colors"
               placeholder="ADMIN@BEABEYOND.COM"
             />
           </div>
@@ -74,7 +96,7 @@ export default function AdminLogin() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border-b border-black py-4 text-sm focus:outline-none placeholder:text-gray-200"
+              className="w-full border-b border-black/30 focus:border-black py-4 text-sm focus:outline-none placeholder:text-gray-300 transition-colors"
               placeholder="••••••••"
             />
           </div>
@@ -82,18 +104,11 @@ export default function AdminLogin() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-black text-white py-5 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-800 transition-colors mt-8 disabled:bg-gray-400"
+            className="w-full bg-black text-white border border-black py-5 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-colors mt-8 disabled:bg-gray-400 disabled:border-gray-400 disabled:text-white"
           >
             {loading ? 'Authorizing...' : 'Authorize'}
           </button>
         </form>
-
-        <div className="mt-12 text-center">
-          <Link href="/" className="text-[9px] uppercase tracking-widest text-gray-400 hover:text-black transition-colors">
-            Return to Public Site
-          </Link>
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   );
 }
