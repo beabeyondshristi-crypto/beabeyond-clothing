@@ -39,11 +39,11 @@ export default function AccountProfile() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-serif uppercase tracking-tighter">Profile</h1>
+      <h2 className="text-2xl md:text-3xl font-serif uppercase tracking-tighter leading-none">Profile</h2>
 
-      <form onSubmit={handleSave} className="max-w-md space-y-6">
+      <form onSubmit={handleSave} className="max-w-md space-y-8 border border-black p-8">
         {error && <div className="bg-red-50 border border-red-200 p-4"><p className="text-[10px] text-red-600 font-bold uppercase tracking-widest">{error}</p></div>}
-        {saved && <div className="bg-green-50 border border-green-200 p-4"><p className="text-[10px] text-green-700 font-bold uppercase tracking-widest">Profile updated</p></div>}
+        {saved && <div className="border border-black p-4"><p className="text-[10px] font-bold uppercase tracking-widest">✓ Profile updated</p></div>}
 
         <div className="space-y-1">
           <label className="text-[10px] uppercase tracking-widest font-bold text-gray-900">Email</label>
@@ -57,7 +57,7 @@ export default function AccountProfile() {
             type="text"
             value={currentName}
             onChange={(e) => setName(e.target.value)}
-            className="w-full border-b border-black py-3 text-sm focus:outline-none"
+            className="w-full border-b border-black/30 focus:border-black py-3 text-sm focus:outline-none transition-colors"
           />
         </div>
 
@@ -67,15 +67,15 @@ export default function AccountProfile() {
             type="tel"
             value={currentPhone}
             onChange={(e) => setPhone(e.target.value)}
-            className="w-full border-b border-black py-3 text-sm focus:outline-none"
-            placeholder="+1 (555) 000-0000"
+            className="w-full border-b border-black/30 focus:border-black py-3 text-sm focus:outline-none transition-colors"
+            placeholder="+91 98765 43210"
           />
         </div>
 
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-black text-white py-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-800 transition-colors disabled:bg-gray-400"
+          className="w-full bg-black text-white border border-black py-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-colors disabled:bg-gray-400 disabled:border-gray-400 disabled:text-white"
         >
           {saving ? 'Saving...' : 'Save Changes'}
         </button>

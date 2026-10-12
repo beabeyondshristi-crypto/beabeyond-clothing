@@ -1,136 +1,127 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { DashboardStats, Order } from '@/lib/types';
+import Link from 'next/link';
+import type { Analytics } from '@/lib/admin-db';
+import { api, Card, compact, delta, EmptyState, inr, PageHeader, shortDate, Skeleton, Stat, StatusBadge, Button } from '@/components/admin/ui';
+import { TrendChart, RankBars } from '@/components/admin/charts';
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<Analytics | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('/api/admin/analytics')
-      .then(async (r) => {
-        const d = await r.json();
-        if (d?.error) throw new Error(d.error);
-        setStats(d);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+    api<Analytics>('/api/admin/analytics?range=30').then(setData).catch((e) => setError(e.message));
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-[10px] uppercase tracking-[0.3em] text-gray-400">Loading...</p>
-      </div>
-    );
-  }
+  const greeting = (() => {
+    const h = new Date().getHours();
+    return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
+  })();
 
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 p-6">
-        <p className="text-[10px] uppercase tracking-widest text-red-600 font-bold">{error}</p>
-        <p className="text-[9px] text-red-500 mt-2">Run SQL migration in Supabase Studio first.</p>
-      </div>
-    );
-  }
+  if (error) return <Card><EmptyState title="Couldn’t load dashboard" text={error} /></Card>;
 
-  const statCards = [
-    { name: 'Total Products', value: stats?.total_products ?? 0 },
-    { name: 'Total Collections', value: stats?.total_collections ?? 0 },
-    { name: 'Active Orders', value: stats?.pending_orders ?? 0 },
-    { name: 'Total Revenue', value: `₹${((stats?.total_revenue ?? 0)).toLocaleString()}` },
-  ];
+  const k = data?.kpis;
+  const toFulfil = data ? data.byStatus.filter((s) => s.status === 'pending' || s.status === 'processing').reduce((n, s) => n + s.count, 0) : 0;
+  const topSellers = data ? [...data.products].sort((a, b) => b.units - a.units).slice(0, 5) : [];
 
   return (
-    <div className="space-y-12">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map((stat) => (
-          <div key={stat.name} className="bg-white p-8 border border-black/5 shadow-sm">
-            <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-2 font-bold">{stat.name}</p>
-            <p className="text-3xl font-serif">{stat.value}</p>
-          </div>
-        ))}
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow={new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+        title={greeting}
+        description="Here’s how the store performed over the last 30 days."
+        actions={
+          <>
+            <Link href="/admin/products?new=1"><Button>+ Add Product</Button></Link>
+            <Link href="/admin/content"><Button variant="secondary">Edit Pages</Button></Link>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {k ? (
+          <>
+            <Stat label="Revenue" value={inr(k.revenue)} delta={delta(k.revenue, k.revenuePrev)} hint="vs prior 30 days" />
+            <Stat label="Orders" value={String(k.orders)} delta={delta(k.orders, k.ordersPrev)} hint="vs prior 30 days" />
+            <Stat label="Average order value" value={inr(k.aov)} delta={delta(k.aov, k.aovPrev)} />
+            <Stat label="Conversion rate" value={`${k.conversion.toFixed(2)}%`} hint={`${compact(k.views)} product views`} />
+          </>
+        ) : (
+          [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[118px]" />)
+        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        <div className="bg-white border border-black/5 shadow-sm">
-          <div className="p-6 border-b border-black/5 flex justify-between items-center">
-            <h2 className="text-[11px] font-bold uppercase tracking-widest">Recent Orders</h2>
-          </div>
-          <div className="divide-y divide-black/5">
-            {(stats?.recent_orders?.length ?? 0) === 0 ? (
-              <div className="p-6 text-center">
-                <p className="text-[10px] text-gray-400 uppercase tracking-widest">No orders yet</p>
-              </div>
-            ) : (
-              stats?.recent_orders?.map((order: Order) => (
-                <div key={order.id} className="p-6 flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-widest">{order.id.slice(0, 8)}</p>
-                    <p className="text-[9px] text-gray-400 uppercase tracking-widest mt-1">{order.customer_name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[11px] font-serif">₹{Number(order.total).toFixed(2)}</p>
-                    <span className={`text-[8px] px-2 py-0.5 uppercase tracking-[0.2em] font-bold ${
-                      order.status === 'delivered' || order.status === 'shipped'
-                        ? 'bg-green-50 text-green-600'
-                        : order.status === 'cancelled'
-                        ? 'bg-red-50 text-red-600'
-                        : 'bg-orange-50 text-orange-600'
-                    }`}>
-                      {order.status}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card title="Revenue — last 30 days" className="lg:col-span-2" action={<Link href="/admin/analytics" className="text-[10px] font-bold uppercase tracking-[0.15em] hover:opacity-50">Full Analytics →</Link>}>
+          {data ? (
+            <TrendChart ariaLabel="Daily revenue, last 30 days" data={data.daily.map((d) => ({ label: shortDate(d.date), value: d.revenue }))} format={(n) => inr(n)} />
+          ) : <Skeleton className="h-[220px]" />}
+        </Card>
 
-        <div className="space-y-6">
-          <div className="bg-white border border-black/5 shadow-sm p-8 text-center">
-            <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-gray-300 mb-6 block">Revenue</span>
-            <h3 className="text-3xl font-serif uppercase tracking-tight mb-2">
-              ₹{((stats?.total_revenue ?? 0)).toLocaleString()}
-            </h3>
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest">
-              Total Revenue (All Time)
-            </p>
-          </div>
+        <Card title="Needs Attention">
+          {data ? (
+            <ul className="divide-y divide-black/10 -my-2">
+              <li>
+                <Link href="/admin/orders?status=pending" className="flex items-center justify-between py-3 group">
+                  <span className="text-xs">Orders to fulfil</span>
+                  <span className="flex items-center gap-2 text-sm font-semibold">{toFulfil}<span className="text-gray-300 group-hover:text-black">→</span></span>
+                </Link>
+              </li>
+              <li>
+                <Link href="/admin/inventory?filter=low" className="flex items-center justify-between py-3 group">
+                  <span className="text-xs">Low or out of stock</span>
+                  <span className="flex items-center gap-2 text-sm font-semibold">{data.lowStock.length}<span className="text-gray-300 group-hover:text-black">→</span></span>
+                </Link>
+              </li>
+              {data.lowStock.slice(0, 4).map((p) => (
+                <li key={p.id} className="flex items-center justify-between py-2.5 pl-3">
+                  <span className="text-[11px] text-gray-600 truncate">{p.name}</span>
+                  <span className={`text-[10px] font-bold uppercase tracking-[0.1em] ${p.soldOut ? 'text-black' : 'text-gray-500'}`}>{p.soldOut ? 'Sold out' : `${p.available} left`}</span>
+                </li>
+              ))}
+              <li className="pt-3">
+                <p className="text-[10px] text-gray-400">{k?.newCustomers} new customers this month · {k?.customers} total</p>
+              </li>
+            </ul>
+          ) : <Skeleton className="h-[220px]" />}
+        </Card>
+      </div>
 
-          {stats?.orders_by_status && stats.orders_by_status.length > 0 && (
-            <div className="bg-white border border-black/5 shadow-sm p-8">
-              <h3 className="text-[11px] font-bold uppercase tracking-widest mb-6">Orders by Status</h3>
-              <div className="space-y-3">
-                {stats.orders_by_status.map((s) => (
-                  <div key={s.status} className="flex items-center justify-between">
-                    <span className="text-[10px] uppercase tracking-widest text-gray-500">{s.status}</span>
-                    <div className="flex items-center gap-3">
-                      <div className="w-32 h-1.5 bg-gray-100">
-                        <div
-                          className="h-full bg-black transition-all"
-                          style={{ width: `${(s.count / Math.max(...stats.orders_by_status.map(x => x.count))) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-[11px] font-bold w-6 text-right">{s.count}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card title="Recent Orders" className="lg:col-span-2" padded={false} action={<Link href="/admin/orders" className="text-[10px] font-bold uppercase tracking-[0.15em] hover:opacity-50">All Orders →</Link>}>
+          {data ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400 border-b border-black/10">
+                    <th className="px-5 py-3 font-bold">Order</th><th className="px-5 py-3 font-bold">Customer</th>
+                    <th className="px-5 py-3 font-bold">Status</th><th className="px-5 py-3 font-bold text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.recentOrders.map((o) => (
+                    <tr key={o.id} className="border-b border-black/5 last:border-0 hover:bg-gray-50">
+                      <td className="px-5 py-3">
+                        <Link href={`/admin/orders?open=${o.id}`} className="text-xs font-semibold hover:underline">#{o.id.slice(0, 8)}</Link>
+                        <p className="text-[10px] text-gray-400">{shortDate(o.created_at)} · {o.items.length} item{o.items.length === 1 ? '' : 's'}</p>
+                      </td>
+                      <td className="px-5 py-3 text-xs">{o.customer_name || '—'}</td>
+                      <td className="px-5 py-3"><StatusBadge status={o.status} /></td>
+                      <td className="px-5 py-3 text-xs font-semibold text-right tabular-nums">{inr(o.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
-        </div>
-      </div>
+          ) : <div className="p-5"><Skeleton className="h-48" /></div>}
+        </Card>
 
-      <div className="bg-white border border-black/5 shadow-sm p-8">
-        <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-gray-300 mb-6 block">System</span>
-        <h3 className="text-2xl font-serif uppercase tracking-tight mb-4">System Operational</h3>
-        <p className="text-[10px] text-gray-400 uppercase tracking-widest leading-loose">
-          All modules are running correctly. Database connected via Supabase.
-        </p>
-        <div className="w-px h-12 bg-black mx-auto mt-8"></div>
+        <Card title="Top Sellers · Units" action={<Link href="/admin/analytics" className="text-[10px] font-bold uppercase tracking-[0.15em] hover:opacity-50">More →</Link>}>
+          {data ? (
+            <RankBars items={topSellers.map((p) => ({ label: p.name, value: p.units }))} format={(n) => `${n}`} />
+          ) : <Skeleton className="h-48" />}
+        </Card>
       </div>
     </div>
   );

@@ -1,229 +1,166 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import type { Order } from '@/lib/types';
+import { OrderTracker } from '@/components/OrderStatus';
+import { api, Button, Card, dateTime, Drawer, EmptyState, inr, PageHeader, SearchInput, shortDate, Skeleton, StatusBadge, Tabs, useToast } from '@/components/admin/ui';
 
-const statusColors: Record<string, string> = {
-  pending: 'bg-orange-50 text-orange-600',
-  processing: 'bg-blue-50 text-blue-600',
-  shipped: 'bg-purple-50 text-purple-600',
-  delivered: 'bg-green-50 text-green-600',
-  cancelled: 'bg-red-50 text-red-600',
+type StatusFilter = 'all' | 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+const NEXT: Record<string, { status: string; label: string } | undefined> = {
+  pending: { status: 'processing', label: 'Start Processing' },
+  processing: { status: 'shipped', label: 'Mark as Shipped' },
+  shipped: { status: 'delivered', label: 'Mark as Delivered' },
 };
 
-export default function AdminOrders() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('');
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+export default function OrdersPage() {
+  const toast = useToast();
+  const [orders, setOrders] = useState<Order[] | null>(null);
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Order | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const fetchOrders = async () => {
-    const params = new URLSearchParams();
-    if (statusFilter) params.set('status', statusFilter);
+  const load = useCallback(async () => {
+    const data = await api<Order[]>('/api/admin/orders');
+    setOrders(data);
+    return data;
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const s = params.get('status') as StatusFilter | null;
+    if (s) setStatus(s);
+    load()
+      .then((data) => { const id = params.get('open'); if (id) setSelected(data.find((o) => o.id === id) || null); })
+      .catch((e) => toast(e.message, 'error'));
+  }, [load, toast]);
+
+  const count = (s: StatusFilter) => (orders || []).filter((o) => s === 'all' || o.status === s).length;
+  const visible = (orders || []).filter((o) => {
+    if (status !== 'all' && o.status !== status) return false;
+    if (!search) return true;
+    const q = search.toLowerCase().replace('#', '');
+    return o.id.toLowerCase().includes(q) || o.customer_name?.toLowerCase().includes(q) || o.customer_email?.toLowerCase().includes(q);
+  });
+
+  const setOrderStatus = async (order: Order, next: string) => {
+    if (next === 'cancelled' && !confirm('Cancel this order? The customer will see it as cancelled.')) return;
+    setBusy(true);
     try {
-      const res = await fetch(`/api/admin/orders?${params}`);
-      const data = await res.json();
-      if (Array.isArray(data)) setOrders(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+      const updated = await api<Order>(`/api/admin/orders/${order.id}`, { method: 'PATCH', json: { status: next } });
+      toast(`Order #${order.id.slice(0, 8)} → ${next}`);
+      setSelected(updated);
+      await load();
+    } catch (e) { toast(e instanceof Error ? e.message : 'Update failed', 'error'); }
+    finally { setBusy(false); }
   };
 
-  useEffect(() => { fetchOrders(); }, [statusFilter]);
-
-  const updateStatus = async (id: string, status: string) => {
-    try {
-      await fetch(`/api/admin/orders/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
-      fetchOrders();
-      if (selectedOrder?.id === id) {
-        setSelectedOrder({ ...selectedOrder, status: status as Order['status'] });
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-[10px] uppercase tracking-[0.3em] text-gray-400">Loading...</p>
-      </div>
-    );
-  }
+  const address = selected?.shipping_address || {};
+  const addressLines = [address.line1, address.line2, [address.city, address.state, address.postal_code].filter(Boolean).join(', '), address.country].filter(Boolean);
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center bg-white p-6 border border-black/5 shadow-sm">
-        <div>
-          <h2 className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Order Management</h2>
-          <p className="text-xl font-serif mt-1">{orders.length} Orders</p>
-        </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="border-b border-black py-2 text-[10px] uppercase tracking-widest focus:outline-none bg-transparent"
-        >
-          <option value="">All Status</option>
-          <option value="pending">Pending</option>
-          <option value="processing">Processing</option>
-          <option value="shipped">Shipped</option>
-          <option value="delivered">Delivered</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+    <div>
+      <PageHeader eyebrow="Store" title="Orders" description="Track, fulfil and update every order. Customers see status changes on their account instantly." />
+
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+        <Tabs<StatusFilter> value={status} onChange={setStatus} options={(['all', 'pending', 'processing', 'shipped', 'delivered', 'cancelled'] as StatusFilter[]).map((s) => ({ value: s, label: s, count: count(s) }))} />
+        <SearchInput value={search} onChange={setSearch} placeholder="Order #, name or email" />
       </div>
 
-      <div className="bg-white border border-black/5 shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-gray-50 border-b border-black/5">
-            <tr>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-gray-400">Order ID</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-gray-400">Customer</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-gray-400">Date</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-gray-400">Total</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-gray-400">Status</th>
-              <th className="px-6 py-4 text-right text-[10px] uppercase tracking-widest font-bold text-gray-400">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-black/5">
-            {orders.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-12 text-center">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest">No orders found</p>
-                </td>
-              </tr>
-            ) : (
-              orders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <p className="text-[11px] font-bold">#{order.id.slice(0, 8)}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-[11px] uppercase tracking-widest">{order.customer_name}</p>
-                    <p className="text-[9px] text-gray-400 mt-0.5">{order.customer_email}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-[11px] text-gray-500">{new Date(order.created_at).toLocaleDateString()}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm font-serif">₹{Number(order.total).toFixed(2)}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <select
-                      value={order.status}
-                      onChange={(e) => updateStatus(order.id, e.target.value)}
-                      className={`text-[8px] px-2 py-1 uppercase tracking-[0.2em] font-bold border-none cursor-pointer ${statusColors[order.status] || 'bg-gray-50 text-gray-600'}`}
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="processing">Processing</option>
-                      <option value="shipped">Shipped</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => setSelectedOrder(selectedOrder?.id === order.id ? null : order)}
-                      className="text-[10px] uppercase tracking-widest font-bold text-gray-400 hover:text-black transition-colors"
-                    >
-                      {selectedOrder?.id === order.id ? 'Close' : 'View Details'}
-                    </button>
-                  </td>
+      <Card padded={false}>
+        {!orders ? (
+          <div className="p-5 space-y-3">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-12" />)}</div>
+        ) : visible.length === 0 ? (
+          <EmptyState title="No orders here" text={search ? 'No orders match your search.' : 'Orders with this status will appear here.'} />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[720px]">
+              <thead>
+                <tr className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400 border-b border-black/10">
+                  <th className="px-5 py-3 font-bold">Order</th><th className="px-5 py-3 font-bold">Date</th><th className="px-5 py-3 font-bold">Customer</th>
+                  <th className="px-5 py-3 font-bold">Items</th><th className="px-5 py-3 font-bold">Status</th><th className="px-5 py-3 font-bold text-right">Total</th>
                 </tr>
-              ))
+              </thead>
+              <tbody>
+                {visible.map((o) => (
+                  <tr key={o.id} onClick={() => setSelected(o)} className="border-b border-black/5 last:border-0 hover:bg-gray-50 cursor-pointer text-xs">
+                    <td className="px-5 py-3 font-semibold">#{o.id.slice(0, 8)}</td>
+                    <td className="px-5 py-3 text-gray-500">{shortDate(o.created_at)}</td>
+                    <td className="px-5 py-3"><p>{o.customer_name || '—'}</p><p className="text-[10px] text-gray-400">{o.customer_email}</p></td>
+                    <td className="px-5 py-3 text-gray-500">{o.items.reduce((n, i) => n + i.quantity, 0)}</td>
+                    <td className="px-5 py-3"><StatusBadge status={o.status} /></td>
+                    <td className="px-5 py-3 text-right font-semibold tabular-nums">{inr(o.total, 2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <Drawer
+        open={!!selected}
+        onClose={() => setSelected(null)}
+        title={selected ? `Order #${selected.id.slice(0, 8)}` : ''}
+        subtitle={selected ? dateTime(selected.created_at) : ''}
+        footer={selected && (
+          <>
+            {selected.status !== 'cancelled' && selected.status !== 'delivered' && (
+              <Button variant="danger" className="mr-auto" disabled={busy} onClick={() => setOrderStatus(selected, 'cancelled')}>Cancel Order</Button>
             )}
-          </tbody>
-        </table>
-      </div>
-
-      {selectedOrder && (
-        <div className="bg-white border border-black/5 shadow-sm p-8">
-          <div className="flex justify-between items-start mb-8">
-            <div>
-              <h2 className="text-lg font-serif uppercase tracking-tight">Order #{selectedOrder.id.slice(0, 8)}</h2>
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1">
-                Placed on {new Date(selectedOrder.created_at).toLocaleString()}
-              </p>
+            <Button variant="ghost" onClick={() => window.print()}>Print</Button>
+            {NEXT[selected.status] && <Button disabled={busy} onClick={() => setOrderStatus(selected, NEXT[selected.status]!.status)}>{busy ? 'Updating…' : NEXT[selected.status]!.label}</Button>}
+          </>
+        )}
+      >
+        {selected && (
+          <div className="space-y-8">
+            <div className="flex items-center justify-between">
+              <StatusBadge status={selected.status} />
+              <span className="text-xl font-semibold tabular-nums">{inr(selected.total, 2)}</span>
             </div>
-            <span className={`text-[8px] px-3 py-1.5 uppercase tracking-[0.2em] font-bold ${statusColors[selectedOrder.status] || 'bg-gray-50 text-gray-600'}`}>
-              {selectedOrder.status}
-            </span>
-          </div>
+            <div className="border border-black/10 p-5"><OrderTracker status={selected.status} /></div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-            <div>
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Customer</h3>
-              <p className="text-sm">{selectedOrder.customer_name}</p>
-              <p className="text-[11px] text-gray-500">{selectedOrder.customer_email}</p>
-            </div>
-            <div>
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Shipping Address</h3>
-              {selectedOrder.shipping_address && Object.keys(selectedOrder.shipping_address).length > 0 ? (
-                <div className="text-[11px] leading-relaxed">
-                  {Object.entries(selectedOrder.shipping_address).map(([key, val]) => (
-                    <p key={key} className="capitalize">{key}: {String(val)}</p>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[11px] text-gray-400">No address on file</p>
-              )}
-            </div>
-          </div>
-
-          <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Order Items</h3>
-          <table className="w-full text-left border-collapse mb-8">
-            <thead className="bg-gray-50 border-b border-black/5">
-              <tr>
-                <th className="px-4 py-3 text-[9px] uppercase tracking-widest font-bold text-gray-400">Item</th>
-                <th className="px-4 py-3 text-[9px] uppercase tracking-widest font-bold text-gray-400">Qty</th>
-                <th className="px-4 py-3 text-[9px] uppercase tracking-widest font-bold text-gray-400">Size</th>
-                <th className="px-4 py-3 text-[9px] uppercase tracking-widest font-bold text-gray-400">Color</th>
-                <th className="px-4 py-3 text-right text-[9px] uppercase tracking-widest font-bold text-gray-400">Price</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/5">
-              {selectedOrder.items?.map((item) => (
-                <tr key={item.id}>
-                  <td className="px-4 py-3 text-[11px] font-bold uppercase tracking-widest">{item.product_name}</td>
-                  <td className="px-4 py-3 text-[11px]">{item.quantity}</td>
-                  <td className="px-4 py-3 text-[11px]">{item.size}</td>
-                  <td className="px-4 py-3 text-[11px]">{item.color}</td>
-                  <td className="px-4 py-3 text-right text-sm font-serif">₹{Number(item.price).toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="flex justify-end border-t border-black/5 pt-4">
-            <div className="text-right space-y-1">
-              <div className="flex justify-between gap-12">
-                <span className="text-[10px] uppercase tracking-widest text-gray-400">Subtotal</span>
-                <span className="text-sm font-serif">₹{Number(selectedOrder.subtotal).toFixed(2)}</span>
+            <section>
+              <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400 mb-3">Items</p>
+              <ul className="border-t border-black">
+                {selected.items.map((item) => (
+                  <li key={item.id} className="flex justify-between gap-4 py-3 border-b border-black/10">
+                    <div>
+                      <Link href={`/product/${item.product_id}`} target="_blank" className="text-xs font-semibold hover:underline">{item.product_name}</Link>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{[item.size && `Size ${item.size}`, item.color, `Qty ${item.quantity}`].filter(Boolean).join(' · ')}</p>
+                    </div>
+                    <span className="text-xs tabular-nums">{inr(item.price * item.quantity, 2)}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="space-y-1.5 text-xs mt-4">
+                <div className="flex justify-between text-gray-500"><span>Subtotal</span><span className="tabular-nums">{inr(selected.subtotal, 2)}</span></div>
+                {selected.discount > 0 && (
+                  <div className="flex justify-between text-gray-500"><span>Discount{selected.coupon_code ? ` · ${selected.coupon_code}` : ''}</span><span className="tabular-nums">−{inr(selected.discount, 2)}</span></div>
+                )}
+                <div className="flex justify-between text-gray-500"><span>Shipping</span><span>{selected.shipping_cost === 0 ? 'Free' : inr(selected.shipping_cost, 2)}</span></div>
+                <div className="flex justify-between text-gray-500"><span>Tax</span><span className="tabular-nums">{inr(selected.tax, 2)}</span></div>
+                <div className="flex justify-between font-semibold text-sm pt-2 border-t border-black/10"><span>Total</span><span className="tabular-nums">{inr(selected.total, 2)}</span></div>
               </div>
-              <div className="flex justify-between gap-12">
-                <span className="text-[10px] uppercase tracking-widest text-gray-400">Shipping</span>
-                <span className="text-sm font-serif">₹{Number(selectedOrder.shipping_cost).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between gap-12 border-t border-black/5 pt-1 mt-1">
-                <span className="text-[11px] uppercase tracking-widest font-bold">Total</span>
-                <span className="text-base font-serif font-bold">₹{Number(selectedOrder.total).toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
+            </section>
 
-          {selectedOrder.notes && (
-            <div className="mt-8 p-4 bg-gray-50">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Notes</h3>
-              <p className="text-[11px]">{selectedOrder.notes}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <section className="border border-black/10 p-4">
+                <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400 mb-3">Customer</p>
+                <p className="text-xs font-semibold">{selected.customer_name || '—'}</p>
+                <a href={`mailto:${selected.customer_email}`} className="text-xs text-gray-600 hover:underline break-all">{selected.customer_email}</a>
+              </section>
+              <section className="border border-black/10 p-4">
+                <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400 mb-3">Ship To</p>
+                {addressLines.length ? addressLines.map((l, i) => <p key={i} className="text-xs text-gray-700">{l}</p>) : <p className="text-xs text-gray-400">No address</p>}
+              </section>
             </div>
-          )}
-        </div>
-      )}
+            {selected.notes && <p className="text-xs text-gray-600 border-l-2 border-black pl-3">{selected.notes}</p>}
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 }

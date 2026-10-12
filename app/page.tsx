@@ -3,12 +3,25 @@ import Image from 'next/image';
 import Navbar from '@/components/Navbar';
 import ProductCard from '@/components/ProductCard';
 import HeroSlider from '@/components/HeroSlider';
+import Footer from '@/components/Footer';
+import Newsletter from '@/components/Newsletter';
 import { createClient } from '@/lib/supabase/server';
+import { getSiteSettings } from '@/lib/admin-db';
 
 export default async function Home() {
   const supabase = await createClient();
+  const settings = await getSiteSettings();
 
   const { data: allProducts } = await supabase.from('products').select('*').order('created_at', { ascending: false }).limit(8);
+  const { data: catalogue } = await supabase.from('products').select('category, images').order('created_at', { ascending: false });
+  const categories = Array.from(
+    (catalogue || []).reduce((map, p) => {
+      const entry = map.get(p.category) || { name: p.category, image: p.images?.[0] || '', count: 0 };
+      entry.count += 1;
+      if (!entry.image && p.images?.[0]) entry.image = p.images[0];
+      return map.set(p.category, entry);
+    }, new Map<string, { name: string; image: string; count: number }>()).values(),
+  ).slice(0, 5);
   const newArrivals = (allProducts || []).slice(0, 4);
   const trending = (allProducts || []).slice(4, 8);
   const { data: sections } = await supabase
@@ -38,10 +51,74 @@ export default async function Home() {
       <main className="flex-grow">
         <HeroSlider slides={heroSlides} />
 
+        {settings.announcement.enabled && settings.announcement.items.length > 0 && (
+        <div className="bg-black text-white overflow-hidden border-b border-black" aria-label="Store highlights">
+          <div className="flex w-max animate-marquee">
+            {[0, 1].map((copy) => (
+              <div key={copy} className="flex shrink-0" aria-hidden={copy === 1}>
+                {settings.announcement.items.map((text) => (
+                  <span key={text} className="flex items-center gap-10 pr-10 h-9 text-[9px] font-bold uppercase tracking-[0.3em] whitespace-nowrap">
+                    {text}
+                    <span className="w-1 h-1 bg-white/50" />
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+        )}
+
+        {categories.length > 0 && (
+          <section className="py-20 border-b border-black">
+            <div className="px-6 md:px-12 flex justify-between items-end mb-10 reveal">
+              <div>
+                <span className="block text-[9px] font-bold uppercase tracking-[0.4em] text-gray-400 mb-3">Shop By</span>
+                <h2 className="text-3xl md:text-4xl font-normal uppercase tracking-tighter font-serif leading-none">Category</h2>
+              </div>
+              <Link href="/shop" className="text-[10px] font-bold border-b border-black pb-0.5 hover:opacity-50 transition-opacity uppercase tracking-widest">
+                Shop All
+              </Link>
+            </div>
+
+            <div className="px-6 md:px-12 flex md:grid md:grid-cols-5 gap-4 overflow-x-auto snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {categories.map((cat) => (
+                <Link
+                  key={cat.name}
+                  href={`/shop?category=${encodeURIComponent(cat.name)}`}
+                  className="group relative shrink-0 w-[62vw] sm:w-[40vw] md:w-auto snap-start reveal"
+                >
+                  <div className="relative aspect-[3/4] overflow-hidden bg-gray-50">
+                    {cat.image && (
+                      <Image
+                        src={cat.image}
+                        alt={cat.name}
+                        fill
+                        className="object-cover transition-transform duration-1000 group-hover:scale-105"
+                        sizes="(max-width: 768px) 62vw, 20vw"
+                        unoptimized
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-500" />
+                  </div>
+                  <div className="flex items-baseline justify-between mt-4 border-b border-black pb-3">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.2em]">{cat.name}</span>
+                    <span className="text-[10px] text-gray-400 tabular-nums group-hover:text-black transition-colors">
+                      {String(cat.count).padStart(2, '0')} →
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="py-20 border-b border-black">
-          <div className="px-6 md:px-12 flex justify-between items-baseline mb-12">
-            <h2 className="text-2xl font-normal uppercase tracking-tighter font-serif">Just Dropped</h2>
-            <Link href="/shop" className="text-[10px] font-bold border-b border-black pb-0.5 hover:opacity-50 transition-opacity uppercase tracking-widest">
+          <div className="px-6 md:px-12 flex justify-between items-end mb-12 reveal">
+            <div>
+              <span className="block text-[9px] font-bold uppercase tracking-[0.4em] text-gray-400 mb-3">This Week</span>
+              <h2 className="text-3xl md:text-4xl font-normal uppercase tracking-tighter font-serif leading-none">Just Dropped</h2>
+            </div>
+            <Link href="/new-arrivals" className="text-[10px] font-bold border-b border-black pb-0.5 hover:opacity-50 transition-opacity uppercase tracking-widest">
               View All
             </Link>
           </div>
@@ -57,8 +134,8 @@ export default async function Home() {
 
         {editorialBlocks.map((block) => (
           <section key={block.id} className="border-b border-black">
-            <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[500px]">
-              <div className="lg:col-span-4 bg-black text-white p-12 md:p-16 flex flex-col justify-center items-start border-b lg:border-b-0 lg:border-r border-white/10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[500px] lg:min-h-[600px]">
+              <div className="lg:col-span-4 bg-black text-white p-12 md:p-16 flex flex-col justify-center items-start reveal border-b lg:border-b-0 lg:border-r border-white/10">
                 {block.settings?.badge && (
                   <span className="text-[9px] font-bold uppercase tracking-[0.4em] mb-6 text-gray-500">{block.settings.badge}</span>
                 )}
@@ -82,12 +159,12 @@ export default async function Home() {
                 )}
               </div>
 
-              <div className="lg:col-span-8 relative min-h-[400px]">
+              <div className="lg:col-span-8 relative min-h-[400px] lg:min-h-[600px] overflow-hidden group">
                 <Image
                   src={block.image_url}
                   alt={block.title}
                   fill
-                  className="object-cover"
+                  className="object-cover transition-transform duration-[2000ms] group-hover:scale-105"
                   unoptimized
                 />
               </div>
@@ -96,14 +173,22 @@ export default async function Home() {
         ))}
 
         <section className="py-24 px-6 md:px-12 border-b border-black">
-          <div className="mb-16 text-center">
-            <h2 className="text-2xl font-normal uppercase tracking-tighter font-serif mb-2">Trending Now</h2>
-            <p className="text-gray-400 uppercase tracking-[0.2em] text-[9px] font-bold">Most coveted pieces this week</p>
+          <div className="mb-16 text-center reveal">
+            <span className="block text-[9px] font-bold uppercase tracking-[0.4em] text-gray-400 mb-3">The Hot List</span>
+            <h2 className="text-3xl md:text-4xl font-normal uppercase tracking-tighter font-serif mb-4 leading-none">Trending Now</h2>
+            <Link href="/trending" className="text-[10px] font-bold border-b border-black pb-0.5 hover:opacity-50 transition-opacity uppercase tracking-widest">
+              View All
+            </Link>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
-            {trending.map((product) => (
-              <ProductCard key={product.id} product={product} />
+            {trending.map((product, i) => (
+              <div key={product.id} className="relative">
+                <span className="block font-serif text-4xl md:text-5xl leading-none mb-4 text-black/15 tabular-nums">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <ProductCard product={product} />
+              </div>
             ))}
           </div>
         </section>
@@ -111,7 +196,7 @@ export default async function Home() {
         {categorySpotlights.length > 0 && (
           <section className="grid grid-cols-1 md:grid-cols-2 border-b border-black">
             {categorySpotlights.map((spot, i) => (
-              <div key={spot.id} className={`relative h-[550px] group overflow-hidden ${i === 0 ? 'border-b md:border-b-0 md:border-r border-black' : ''}`}>
+              <div key={spot.id} className={`relative h-[480px] md:h-[640px] group overflow-hidden ${i === 0 ? 'border-b md:border-b-0 md:border-r border-black' : ''}`}>
                 <Image
                   src={spot.image_url}
                   alt={spot.title}
@@ -119,10 +204,11 @@ export default async function Home() {
                   className="object-cover transition-transform duration-1000 group-hover:scale-105"
                   unoptimized
                 />
-                <div className="absolute inset-0 flex flex-col justify-end p-10 bg-gradient-to-t from-black/40 to-transparent">
-                  <h3 className="text-white text-3xl font-normal uppercase tracking-tighter mb-4 font-serif">{spot.title}</h3>
+                <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-12 bg-gradient-to-t from-black/60 via-black/5 to-transparent">
+                  <span className="text-white/70 text-[9px] font-bold uppercase tracking-[0.4em] mb-3">{String(i + 1).padStart(2, '0')} — Spotlight</span>
+                  <h3 className="text-white text-4xl md:text-5xl font-normal uppercase tracking-tighter mb-5 font-serif leading-none reveal">{spot.title}</h3>
                   <Link href={spot.link_url || '/shop'} className="text-white text-[10px] font-bold uppercase tracking-[0.2em] border-b border-white inline-block w-max hover:opacity-80 pb-0.5">
-                    {spot.link_text || 'Shop Now'}
+                    {spot.link_text || 'Shop Now'} →
                   </Link>
                 </div>
               </div>
@@ -130,60 +216,22 @@ export default async function Home() {
           </section>
         )}
 
+        <section className="grid grid-cols-2 md:grid-cols-4 border-b border-black">
+          {settings.services.slice(0, 4).map(({ title, text }, i) => (
+            <div key={title} className={`reveal px-6 md:px-10 py-10 md:py-12 border-black ${i % 2 === 0 ? 'border-r' : 'md:border-r'} ${i < 2 ? 'border-b md:border-b-0' : ''} ${i === 3 ? 'md:border-r-0' : ''}`}>
+              <span className="block text-[9px] text-gray-400 tabular-nums mb-4">{String(i + 1).padStart(2, '0')}</span>
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] mb-2">{title}</p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest leading-relaxed">{text}</p>
+            </div>
+          ))}
+        </section>
+
         {newsletter?.is_visible !== false && (
-          <section className="py-24 px-6 md:px-12 bg-black text-white flex flex-col items-center justify-center text-center">
-            <h2 className="text-3xl md:text-4xl font-normal uppercase tracking-tighter mb-6 font-serif">{newsletter?.title || 'Join The Club'}</h2>
-            <p className="text-gray-400 max-w-xs mb-10 font-light text-[11px] uppercase tracking-widest leading-relaxed">
-              {newsletter?.subtitle || 'Sign up for exclusive access to new drops and member-only sales.'}
-            </p>
-            <form className="w-full max-w-sm flex flex-col gap-4">
-              <input
-                type="email"
-                placeholder="ENTER YOUR EMAIL"
-                className="bg-transparent border border-white/30 p-4 text-white placeholder-gray-600 text-[10px] font-bold uppercase tracking-[0.2em] focus:outline-none focus:border-white transition-colors"
-              />
-              <button
-                type="submit"
-                className="bg-white text-black py-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-200 transition-colors"
-              >
-                Subscribe
-              </button>
-            </form>
-          </section>
+          <Newsletter title={newsletter?.title || undefined} subtitle={newsletter?.subtitle || undefined} />
         )}
       </main>
 
-      <footer className="py-16 px-6 md:px-12 bg-white flex flex-col md:flex-row justify-between gap-12 border-t border-black">
-        <div className="flex flex-col gap-6 max-w-xs">
-          <div className="uppercase font-normal tracking-tighter text-2xl font-serif">Beabeyond</div>
-          <p className="text-[10px] text-gray-400 uppercase tracking-widest leading-loose">
-            Minimalism, structure, and timeless design.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-12 md:gap-20 text-[10px] font-bold uppercase tracking-[0.15em]">
-          <div className="flex flex-col gap-3">
-            <span className="text-gray-300 mb-1">Shop</span>
-            <Link href="#" className="hover:opacity-50 transition-opacity">New Arrivals</Link>
-            <Link href="#" className="hover:underline">Clothing</Link>
-            <Link href="#" className="hover:underline">Accessories</Link>
-          </div>
-          <div className="flex flex-col gap-3">
-            <span className="text-gray-300 mb-1">Help</span>
-            <Link href="#" className="hover:opacity-50 transition-opacity">Shipping</Link>
-            <Link href="#" className="hover:opacity-50 transition-opacity">Returns</Link>
-            <Link href="#" className="hover:opacity-50 transition-opacity">Contact</Link>
-          </div>
-          <div className="flex flex-col gap-3">
-            <span className="text-gray-300 mb-1">Social</span>
-            <Link href="#" className="hover:opacity-50 transition-opacity">Instagram</Link>
-            <Link href="#" className="hover:opacity-50 transition-opacity">TikTok</Link>
-          </div>
-        </div>
-      </footer>
-      <div className="py-6 border-t border-gray-100 text-center text-[9px] text-gray-400 uppercase tracking-[0.2em]">
-        © {new Date().getFullYear()} Beabeyond Retail Group.
-      </div>
+      <Footer />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import { createClient } from '@/lib/supabase/server';
 import ProductDetailsClient from '@/components/ProductDetailsClient';
 
@@ -20,6 +21,7 @@ export default async function ProductPage({ params }: Props) {
     <div className="min-h-screen flex flex-col font-sans">
       <Navbar />
       <ProductDetailsClient product={product} />
+      <Footer />
     </div>
   );
 }

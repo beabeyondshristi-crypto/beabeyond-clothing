@@ -22,14 +22,19 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 /* Enforce sharp edges globally */
 * {
   border-radius: 0px !important;
 }
 
 /* Typography Overrides for that high-fashion look */
+/* Typeface comes from the font-serif utility on each heading; setting font-family here
+   would override that utility, since this rule sits outside Tailwind's layers. */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-serif);
   font-weight: 400; /* Making headings less heavy */
   letter-spacing: -0.02em;
   text-transform: uppercase;
@@ -43,4 +48,98 @@ h1, h2, h3, h4, h5, h6 {
 /* Specific Zara-style overrides */
 .text-xxs {
   font-size: 10px;
+}
+
+/* ─── Motion ─────────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hero-zoom {
+  from { transform: scale(1.08); }
+  to { transform: scale(1); }
+}
+
+@keyframes progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes page-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(32px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-hero-zoom {
+  animation: hero-zoom 7s ease-out both;
+}
+
+.animate-marquee {
+  animation: marquee 40s linear infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Route change: quick fade so navigation feels instant but not abrupt.
+   Opacity only and no fill-mode — a transform here would turn the wrapper into the
+   containing block for fixed overlays (cart drawer, menus, search). */
+.animate-page-in {
+  animation: page-in 0.25s ease-out;
+}
+
+/* Scroll reveal driven by the browser's scroll timeline — no JavaScript.
+   Browsers without support simply show the content. */
+@supports (animation-timeline: view()) {
+  .reveal {
+    animation: reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .reveal,
+  .animate-page-in,
+  .animate-fade-up,
+  .animate-hero-zoom,
+  .animate-marquee,
+  .animate-fade-in,
+  .animate-slide-in-right {
+    animation: none;
+  }
 }

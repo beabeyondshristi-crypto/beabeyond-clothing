@@ -1,621 +1,239 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
 import type { Product } from '@/lib/types';
-import { compressImage } from '@/lib/image-compress';
+import { isSoldOut, isLowStock as lowStockRule } from '@/lib/stock';
+import {
+  api, Badge, Button, Card, Drawer, EmptyState, Field, ImageListField, inr, Input, ListField, PageHeader, SearchInput, Select, Skeleton, Tabs, Textarea, Toggle, useToast,
+} from '@/components/admin/ui';
 
-const SIZE_OPTIONS = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'FREE SIZE'];
-const FABRIC_OPTIONS = ['Cotton', 'Linen', 'Silk', 'Wool', 'Denim', 'Polyester', 'Viscose', 'Cashmere', 'Leather', 'Canvas', 'Organic Cotton', 'Cotton Blend', 'Wool Blend', 'Silk Blend', 'Linen Blend'];
-const CATEGORIES = ['Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Footwear', 'Accessories'];
+type Filter = 'all' | 'low' | 'new' | 'trending' | 'bealuxe';
 
-const COLOR_MAP: Record<string, string> = {
-  black: '#000000', white: '#ffffff', navy: '#000080', ivory: '#fffff0',
-  charcoal: '#36454f', tan: '#d2b48c', natural: '#d4c9b0', cream: '#fffdd0',
-  grey: '#808080', slate: '#708090', brown: '#8b4513', beige: '#f5f5dc',
-  pink: '#ffc0cb', red: '#ff0000', blue: '#0000ff', green: '#008000',
-  yellow: '#ffff00', purple: '#800080', orange: '#ffa500', silver: '#c0c0c0',
-  gold: '#ffd700', nude: '#e8c7b3', olive: '#808000', maroon: '#800000',
-  burgundy: '#800020', camel: '#c19a6b', blush: '#de5d83', midnight: '#191970',
+const EMPTY: Partial<Product> = {
+  name: '', price: 0, category: '', description: '', fabric: '', images: [], highlights: [], care: [],
+  colors: ['Black'], sizes: ['XS', 'S', 'M', 'L', 'XL'], stock: 0, low_stock_threshold: 5, out_of_stock_threshold: 0,
+  is_new_arrival: true, is_trending: false, is_essential: false,
 };
 
-interface ProductForm {
-  name: string;
-  price: string;
-  category: string;
-  description: string;
-  fabric: string;
-  highlights: string[];
-  care: string[];
-  uploadedImages: string[];
-  colors: string[];
-  sizes: string[];
-  stock: string;
-  low_stock_threshold: string;
-  is_new_arrival: boolean;
-  is_trending: boolean;
-  is_essential: boolean;
-}
-
-const defaultForm: ProductForm = {
-  name: '',
-  price: '',
-  category: 'Tops',
-  description: '',
-  fabric: '',
-  highlights: [],
-  care: [],
-  uploadedImages: [],
-  colors: [],
-  sizes: [],
-  stock: '0',
-  low_stock_threshold: '5',
-  is_new_arrival: false,
-  is_trending: false,
-  is_essential: false,
-};
-
-export default function AdminProducts() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<ProductForm>(defaultForm);
+export default function ProductsPage() {
+  const toast = useToast();
+  const [products, setProducts] = useState<Product[] | null>(null);
   const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [category, setCategory] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
+  const [draft, setDraft] = useState<Partial<Product> | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const fetchProducts = async () => {
-    const params = new URLSearchParams();
-    if (search) params.set('search', search);
-    if (categoryFilter) params.set('category', categoryFilter);
-    setLoadError('');
+  const load = useCallback(async () => setProducts(await api<Product[]>('/api/admin/products')), []);
+
+  useEffect(() => {
+    load().catch((e) => toast(e.message, 'error'));
+    if (new URLSearchParams(window.location.search).get('new')) setDraft({ ...EMPTY });
+  }, [load, toast]);
+
+  const categories = useMemo(() => Array.from(new Set((products || []).map((p) => p.category))).sort(), [products]);
+  const isLow = (p: Product) => isSoldOut(p) || lowStockRule(p);
+  const counts = {
+    all: products?.length || 0,
+    low: products?.filter(isLow).length || 0,
+    new: products?.filter((p) => p.is_new_arrival).length || 0,
+    trending: products?.filter((p) => p.is_trending).length || 0,
+    bealuxe: products?.filter((p) => p.is_essential).length || 0,
+  };
+
+  const visible = (products || []).filter((p) => {
+    if (search && !`${p.name} ${p.category} ${p.fabric}`.toLowerCase().includes(search.toLowerCase())) return false;
+    if (category && p.category !== category) return false;
+    if (filter === 'low') return isLow(p);
+    if (filter === 'new') return p.is_new_arrival;
+    if (filter === 'trending') return p.is_trending;
+    if (filter === 'bealuxe') return p.is_essential;
+    return true;
+  });
+
+  const save = async () => {
+    if (!draft) return;
+    if (!draft.name?.trim() || !draft.category?.trim() || !(Number(draft.price) > 0)) {
+      toast('Name, category and a price above ₹0 are required', 'error');
+      return;
+    }
+    setSaving(true);
     try {
-      const res = await fetch(`/api/admin/products?${params}`);
-      const data = await res.json();
-      if (Array.isArray(data)) setProducts(data);
-      else setLoadError(data?.error || 'Failed to load products');
-    } catch (e) {
-      setLoadError('Network error — is the server running?');
-    } finally {
-      setLoading(false);
-    }
+      const body = { ...draft, price: Number(draft.price), stock: Number(draft.stock), low_stock_threshold: Number(draft.low_stock_threshold) };
+      if (draft.id) await api(`/api/admin/products/${draft.id}`, { method: 'PUT', json: body });
+      else await api('/api/admin/products', { method: 'POST', json: body });
+      toast(draft.id ? 'Product saved' : 'Product created');
+      setDraft(null);
+      await load();
+    } catch (e) { toast(e instanceof Error ? e.message : 'Save failed', 'error'); }
+    finally { setSaving(false); }
   };
 
-  useEffect(() => { fetchProducts(); }, [search, categoryFilter]);
-
-  const openForm = (product?: Product) => {
-    if (product) {
-      setForm({
-        name: product.name,
-        price: String(product.price),
-        category: product.category,
-        description: product.description || '',
-        fabric: product.fabric || '',
-        highlights: product.highlights || [],
-        care: product.care || [],
-        uploadedImages: product.images || [],
-        colors: product.colors || [],
-        sizes: product.sizes || [],
-        stock: String(product.stock ?? 0),
-        low_stock_threshold: String(product.low_stock_threshold ?? 5),
-        is_new_arrival: product.is_new_arrival,
-        is_trending: product.is_trending,
-        is_essential: product.is_essential,
-      });
-      setEditingId(product.id);
-    } else {
-      setForm(defaultForm);
-      setEditingId(null);
-    }
-    setIsFormOpen(true);
-  };
-
-  const closeForm = () => {
-    setIsFormOpen(false);
-    setEditingId(null);
-    setForm(defaultForm);
-  };
-
-  const [formError, setFormError] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-
-    const body = {
-      name: form.name,
-      price: parseFloat(form.price),
-      category: form.category,
-      description: form.description,
-      fabric: form.fabric,
-      highlights: form.highlights,
-      care: form.care,
-      images: form.uploadedImages,
-      colors: form.colors,
-      sizes: form.sizes,
-      stock: parseInt(form.stock) || 0,
-      low_stock_threshold: parseInt(form.low_stock_threshold) || 5,
-      is_new_arrival: form.is_new_arrival,
-      is_trending: form.is_trending,
-      is_essential: form.is_essential,
-    };
-
+  const remove = async (p: Partial<Product>) => {
+    if (!p.id || !confirm(`Delete “${p.name}”? It will disappear from the store immediately.`)) return;
     try {
-      const res = editingId
-        ? await fetch(`/api/admin/products/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-        : await fetch('/api/admin/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || `Server error (${res.status})`);
-      }
-
-      closeForm();
-      fetchProducts();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to save product';
-      if (msg.includes('relation') || msg.includes('does not exist')) {
-        setFormError('Database tables not found. Run the SQL migration in Supabase first.');
-      } else {
-        setFormError(msg);
-      }
-    }
+      await api(`/api/admin/products/${p.id}`, { method: 'DELETE' });
+      toast('Product deleted');
+      setDraft(null);
+      await load();
+    } catch (e) { toast(e instanceof Error ? e.message : 'Delete failed', 'error'); }
   };
 
-  const [uploading, setUploading] = useState(false);
-  const [colorInput, setColorInput] = useState('');
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setUploading(true);
-    try {
-      const data = new FormData();
-      for (const file of Array.from(files)) {
-        const compressed = await compressImage(file, 1200, 0.7);
-        const webpFile = new File([compressed], file.name.replace(/\.[^.]+₹/, '.webp'), { type: 'image/webp' });
-        data.append('images', webpFile);
-      }
-      const res = await fetch('/api/admin/upload', { method: 'POST', body: data });
-      const result = await res.json();
-      if (result.urls) {
-        setForm({ ...form, uploadedImages: [...form.uploadedImages, ...result.urls] });
-      }
-    } catch (e) {
-      console.error('Upload failed', e);
-    } finally {
-      setUploading(false);
-      e.target.value = '';
-    }
+  const duplicate = (p: Product) => {
+    const { id: _id, created_at: _c, updated_at: _u, ...rest } = p; // eslint-disable-line @typescript-eslint/no-unused-vars
+    setDraft({ ...rest, name: `${p.name} (Copy)` });
   };
 
-  const removeImage = (index: number) => {
-    setForm({
-      ...form,
-      uploadedImages: form.uploadedImages.filter((_, i) => i !== index),
-    });
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this product?')) return;
-    try {
-      await fetch(`/api/admin/products/${id}`, { method: 'DELETE' });
-      fetchProducts();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-[10px] uppercase tracking-[0.3em] text-gray-400">Loading...</p>
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-red-50 border border-red-200 p-6">
-          <p className="text-[10px] uppercase tracking-widest text-red-600 font-bold">{loadError}</p>
-          <p className="text-[9px] text-red-500 mt-2">
-            Make sure you ran the SQL migration in Supabase Studio.
-          </p>
-        </div>
-        <button onClick={fetchProducts} className="text-[10px] uppercase tracking-widest font-bold underline">
-          Retry
-        </button>
-      </div>
-    );
-  }
+  const set = <K extends keyof Product>(key: K, value: Product[K]) => draft && setDraft({ ...draft, [key]: value });
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center bg-white p-6 border border-black/5 shadow-sm sticky top-20 z-10">
-        <div>
-          <h2 className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Inventory</h2>
-          <p className="text-xl font-serif mt-1">{products.length} Items</p>
-        </div>
-        <div className="flex gap-4 items-center">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="SEARCH..."
-            className="border-b border-black py-2 text-[10px] uppercase tracking-widest focus:outline-none w-40"
-          />
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="border-b border-black py-2 text-[10px] uppercase tracking-widest focus:outline-none bg-transparent"
-          >
-            <option value="">All Categories</option>
-            <option>Tops</option>
-            <option>Bottoms</option>
-            <option>Outerwear</option>
-            <option>Footwear</option>
-            <option>Accessories</option>
-            <option>Dresses</option>
-          </select>
-          <button
-            onClick={() => openForm()}
-            className="bg-black text-white px-8 py-3 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-800 transition-colors"
-          >
-            Add New Product
-          </button>
+    <div>
+      <PageHeader
+        eyebrow="Store"
+        title="Products"
+        description="Your catalogue. Images, sizes, stock and where each piece appears on the site."
+        actions={<Button onClick={() => setDraft({ ...EMPTY })}>+ Add Product</Button>}
+      />
+
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+        <Tabs<Filter> value={filter} onChange={setFilter} options={[
+          { value: 'all', label: 'All', count: counts.all },
+          { value: 'low', label: 'Low Stock', count: counts.low },
+          { value: 'new', label: 'New', count: counts.new },
+          { value: 'trending', label: 'Trending', count: counts.trending },
+          { value: 'bealuxe', label: 'Bealuxe', count: counts.bealuxe },
+        ]} />
+        <div className="flex gap-2">
+          <Select value={category} onChange={(e) => setCategory(e.target.value)} className="w-40" options={[{ value: '', label: 'All categories' }, ...categories.map((c) => ({ value: c, label: c }))]} />
+          <SearchInput value={search} onChange={setSearch} placeholder="Search products" />
         </div>
       </div>
 
-      <div className="bg-white border border-black/5 shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-gray-50 border-b border-black/5">
-            <tr>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-gray-400">Product</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-gray-400">Category</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-gray-400">Price</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-gray-400">Stock</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-gray-400">Colors</th>
-              <th className="px-6 py-4 text-right text-[10px] uppercase tracking-widest font-bold text-gray-400">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-black/5">
-            {products.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-12 text-center">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest">No products found</p>
-                </td>
-              </tr>
-            ) : (
-              products.map((product) => (
-                <tr key={product.id} className="hover:bg-gray-50 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-16 bg-gray-100 relative overflow-hidden flex-shrink-0">
-                        {product.images?.[0] && (
-                          <img src={product.images[0]} alt="" className="object-cover w-full h-full grayscale group-hover:grayscale-0 transition-all" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-bold uppercase tracking-widest">{product.name}</p>
-                        <p className="text-[9px] text-gray-400 uppercase tracking-widest mt-1">ID: #{product.id.slice(0, 8)}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-[10px] uppercase tracking-widest text-gray-500">{product.category}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm font-serif">₹{Number(product.price).toFixed(2)}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-[10px] font-bold ${(product.stock ?? 0) <= (product.low_stock_threshold ?? 5) ? 'text-red-500' : 'text-gray-700'}`}>
-                      {product.stock ?? 0}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-1 flex-wrap max-w-[150px]">
-                      {(product.colors || []).map(c => (
-                        <span key={c} className="text-[8px] border border-black/10 px-1.5 py-0.5 uppercase tracking-widest">{c}</span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-4">
-                      <button
-                        onClick={() => openForm(product)}
-                        className="text-[10px] uppercase tracking-widest font-bold text-gray-400 hover:text-black transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(product.id)}
-                        className="text-[10px] uppercase tracking-widest font-bold text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+      <Card padded={false}>
+        {!products ? (
+          <div className="p-5 space-y-3">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-14" />)}</div>
+        ) : visible.length === 0 ? (
+          <EmptyState title="No products found" text="Try another filter, or add your first product." action={<Button onClick={() => setDraft({ ...EMPTY })}>+ Add Product</Button>} />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[720px]">
+              <thead>
+                <tr className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400 border-b border-black/10">
+                  <th className="px-5 py-3 font-bold">Product</th><th className="px-5 py-3 font-bold">Category</th>
+                  <th className="px-5 py-3 font-bold text-right">Price</th><th className="px-5 py-3 font-bold text-right">Stock</th>
+                  <th className="px-5 py-3 font-bold">Shown In</th><th className="px-5 py-3" />
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {isFormOpen && (
-        <div className="fixed inset-0 z-[100] flex justify-end">
-          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={closeForm} />
-          <div className="relative w-full max-w-2xl bg-white h-full shadow-2xl overflow-y-auto p-12">
-            <div className="flex justify-between items-center mb-12">
-              <h2 className="text-2xl font-serif uppercase tracking-tighter">
-                {editingId ? 'Edit Product' : 'Add New Product'}
-              </h2>
-              <button onClick={closeForm} className="text-2xl font-light">✕</button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-8 pb-20">
-              <div className="grid grid-cols-2 gap-8">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-widest font-bold">Product Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="w-full border-b border-black py-3 text-sm focus:outline-none"
-                    placeholder="E.G. SILK BLOUSE"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-widest font-bold">Price (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={form.price}
-                    onChange={(e) => setForm({ ...form, price: e.target.value })}
-                    className="w-full border-b border-black py-3 text-sm focus:outline-none"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-widest font-bold">Category</label>
-                <select
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className="w-full border-b border-black py-3 text-sm focus:outline-none bg-transparent"
-                >
-                  <option>Tops</option>
-                  <option>Bottoms</option>
-                  <option>Outerwear</option>
-                  <option>Footwear</option>
-                  <option>Dresses</option>
-                  <option>Accessories</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-widest font-bold">Description</label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full border-b border-black py-3 text-sm focus:outline-none min-h-[100px]"
-                  placeholder="PRODUCT DETAILS..."
-                />
-              </div>
-
-              <div className="pt-4 border-t border-black/5 space-y-6">
-                <span className="text-[11px] font-bold uppercase tracking-widest">Material & Care</span>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-widest font-bold">Material</label>
-                  <select
-                    value={form.fabric}
-                    onChange={(e) => setForm({ ...form, fabric: e.target.value })}
-                    className="w-full border-b border-black py-3 text-sm focus:outline-none bg-transparent"
-                  >
-                    <option value="">SELECT FABRIC</option>
-                    {FABRIC_OPTIONS.map((f) => (
-                      <option key={f} value={f}>{f}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-widest font-bold">Highlights (one per line)</label>
-                  <textarea
-                    value={form.highlights.join('\n')}
-                    onChange={(e) => setForm({ ...form, highlights: e.target.value.split('\n').map(l => l.trim()).filter(Boolean) })}
-                    className="w-full border-b border-black py-3 text-sm focus:outline-none min-h-[80px]"
-                    placeholder={'BOX PLEATED PANEL\nBRASS HARDWARE\nFULLY LINED'}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-widest font-bold">Care Instructions (one per line)</label>
-                  <textarea
-                    value={form.care.join('\n')}
-                    onChange={(e) => setForm({ ...form, care: e.target.value.split('\n').map(l => l.trim()).filter(Boolean) })}
-                    className="w-full border-b border-black py-3 text-sm focus:outline-none min-h-[80px]"
-                    placeholder={'DRY CLEAN ONLY\nIRON ON LOW HEAT\nSTORE IN A COOL, DRY PLACE'}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-[10px] uppercase tracking-widest font-bold">Product Images</label>
-                <div className="flex flex-wrap gap-3 mb-3">
-                  {form.uploadedImages.map((url, i) => (
-                    <div key={i} className="relative w-20 h-24 bg-gray-100 border border-black/10 group">
-                      <img src={url} alt="" className="object-cover w-full h-full" />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(i)}
-                        className="absolute top-0 right-0 bg-black/70 text-white w-5 h-5 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  <label className="w-20 h-24 border-2 border-dashed border-black/10 flex flex-col items-center justify-center cursor-pointer hover:border-black/40 transition-colors">
-                    <span className="text-[18px] text-gray-300 font-light">{uploading ? '...' : '+'}</span>
-                    <span className="text-[7px] uppercase tracking-widest text-gray-300 mt-1">{uploading ? 'Uploading' : 'Add'}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageUpload}
-                      disabled={uploading}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-8">
-                <div className="space-y-3">
-                  <label className="text-[10px] uppercase tracking-widest font-bold">Colors</label>
-                  <div className="flex flex-wrap gap-2 min-h-[42px] p-3 border border-black/10 bg-white">
-                    {form.colors.map((c, i) => (
-                      <span key={i} className="flex items-center gap-1.5 bg-gray-100 border border-black/10 px-2.5 py-1.5">
-                        <span
-                          className="w-3 h-3 rounded-full border border-black/20"
-                          style={{ backgroundColor: COLOR_MAP[c.toLowerCase()] || c.toLowerCase() }}
-                        />
-                        <span className="text-[10px] uppercase tracking-widest font-medium">{c}</span>
-                        <button
-                          type="button"
-                          onClick={() => setForm({ ...form, colors: form.colors.filter((_, j) => j !== i) })}
-                          className="text-gray-400 hover:text-black ml-0.5 text-[10px]"
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    ))}
-                    <input
-                      type="text"
-                      value={colorInput}
-                      onChange={(e) => setColorInput(e.target.value.toUpperCase())}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          const val = colorInput.trim();
-                          if (val && !form.colors.includes(val)) {
-                            setForm({ ...form, colors: [...form.colors, val] });
-                          }
-                          setColorInput('');
-                        }
-                      }}
-                      className="flex-1 min-w-[80px] border-none text-[11px] uppercase tracking-widest focus:outline-none placeholder:text-gray-200"
-                      placeholder="TYPE + ENTER"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] uppercase tracking-widest font-bold">Sizes</label>
-                  <div className="flex flex-wrap gap-2">
-                    {SIZE_OPTIONS.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => {
-                          if (form.sizes.includes(s)) {
-                            setForm({ ...form, sizes: form.sizes.filter(x => x !== s) });
-                          } else {
-                            setForm({ ...form, sizes: [...form.sizes, s] });
-                          }
-                        }}
-                        className={`px-3 py-2 text-[10px] uppercase tracking-widest font-bold border transition-colors ${
-                          form.sizes.includes(s)
-                            ? 'bg-black text-white border-black'
-                            : 'bg-white text-gray-400 border-black/10 hover:border-black/40'
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-8">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-widest font-bold">Stock Quantity</label>
-                  <input
-                    type="number"
-                    value={form.stock}
-                    onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                    className="w-full border-b border-black py-3 text-sm focus:outline-none"
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-widest font-bold">Low Stock Threshold</label>
-                  <input
-                    type="number"
-                    value={form.low_stock_threshold}
-                    onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })}
-                    className="w-full border-b border-black py-3 text-sm focus:outline-none"
-                    placeholder="5"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-black/5">
-                <span className="text-[10px] font-bold uppercase tracking-widest block mb-6">Storefront Placement</span>
-                <div className="flex flex-wrap gap-12">
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={form.is_new_arrival}
-                      onChange={(e) => setForm({ ...form, is_new_arrival: e.target.checked })}
-                      className="w-4 h-4 accent-black"
-                    />
-                    <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400 group-hover:text-black transition-colors">New Arrival</span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={form.is_trending}
-                      onChange={(e) => setForm({ ...form, is_trending: e.target.checked })}
-                      className="w-4 h-4 accent-black"
-                    />
-                    <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400 group-hover:text-black transition-colors">Trending</span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={form.is_essential}
-                      onChange={(e) => setForm({ ...form, is_essential: e.target.checked })}
-                      className="w-4 h-4 accent-black"
-                    />
-                    <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400 group-hover:text-black transition-colors">Essential</span>
-                  </label>
-                </div>
-              </div>
-
-              {formError && (
-                <div className="bg-red-50 border border-red-200 p-4">
-                  <p className="text-[10px] uppercase tracking-widest text-red-600 font-bold">{formError}</p>
-                </div>
-              )}
-
-              <div className="pt-12">
-                <button
-                  type="submit"
-                  className="w-full bg-black text-white py-5 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-gray-800 transition-colors"
-                >
-                  {editingId ? 'Update Product' : 'Create Product Entry'}
-                </button>
-              </div>
-            </form>
+              </thead>
+              <tbody>
+                {visible.map((p) => (
+                  <tr key={p.id} className="border-b border-black/5 last:border-0 hover:bg-gray-50 cursor-pointer" onClick={() => setDraft({ ...p })}>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-10 h-12 bg-gray-50 shrink-0 overflow-hidden">{p.images?.[0] && <Image src={p.images[0]} alt="" fill className="object-cover" unoptimized />}</div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold truncate">{p.name}</p>
+                          <p className="text-[10px] text-gray-400 truncate">{p.colors?.join(', ')} · {p.sizes?.length} sizes</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-xs">{p.category}</td>
+                    <td className="px-5 py-3 text-xs text-right tabular-nums font-semibold">{inr(p.price)}</td>
+                    <td className="px-5 py-3 text-right">
+                      <span className={`text-xs tabular-nums ${isSoldOut(p) ? 'font-bold' : isLow(p) ? 'font-semibold' : ''}`}>{p.stock}</span>
+                      {isSoldOut(p) ? <span className="block text-[9px] font-bold uppercase tracking-[0.15em]">Sold out</span> : isLow(p) && <span className="block text-[9px] uppercase tracking-[0.15em] text-gray-500">Low</span>}
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {p.is_new_arrival && <Badge>New</Badge>}
+                        {p.is_trending && <Badge>Trending</Badge>}
+                        {p.is_essential && <Badge>Bealuxe</Badge>}
+                        {!p.is_new_arrival && !p.is_trending && !p.is_essential && <span className="text-[10px] text-gray-300">Shop only</span>}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <button onClick={() => duplicate(p)} className="text-[9px] font-bold uppercase tracking-[0.15em] text-gray-400 hover:text-black mr-4">Duplicate</button>
+                      <button onClick={() => setDraft({ ...p })} className="text-[9px] font-bold uppercase tracking-[0.15em] hover:opacity-50">Edit</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
-      )}
+        )}
+      </Card>
+
+      <Drawer
+        open={!!draft}
+        onClose={() => setDraft(null)}
+        width="max-w-2xl"
+        title={draft?.id ? draft.name || 'Edit Product' : 'New Product'}
+        subtitle={draft?.id ? `Updated ${draft.updated_at ? new Date(draft.updated_at).toLocaleDateString('en-IN') : ''}` : 'Add to catalogue'}
+        footer={
+          <>
+            {draft?.id && <Button variant="danger" className="mr-auto" onClick={() => remove(draft)}>Delete</Button>}
+            {draft?.id && <Link href={`/product/${draft.id}`} target="_blank"><Button variant="ghost">View ↗</Button></Link>}
+            <Button variant="ghost" onClick={() => setDraft(null)}>Cancel</Button>
+            <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : draft?.id ? 'Save Changes' : 'Create Product'}</Button>
+          </>
+        }
+      >
+        {draft && (
+          <div className="space-y-8">
+            <section className="space-y-4">
+              <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400">Basics</p>
+              <Field label="Name"><Input value={draft.name || ''} onChange={(e) => set('name', e.target.value)} placeholder="e.g. Structured Cotton Shirt" /></Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Price (₹)"><Input type="number" min={0} value={draft.price ?? ''} onChange={(e) => set('price', Number(e.target.value))} /></Field>
+                <Field label="Category" hint="Pick or type a new one">
+                  <Input list="categories" value={draft.category || ''} onChange={(e) => set('category', e.target.value)} placeholder="Tops" />
+                  <datalist id="categories">{categories.map((c) => <option key={c} value={c} />)}</datalist>
+                </Field>
+              </div>
+              <Field label="Description" hint="Each sentence becomes a bullet on the product page"><Textarea rows={4} value={draft.description || ''} onChange={(e) => set('description', e.target.value)} /></Field>
+            </section>
+
+            <section className="space-y-4">
+              <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400">Media</p>
+              <ImageListField value={draft.images || []} onChange={(v) => set('images', v)} />
+            </section>
+
+            <section className="space-y-4">
+              <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400">Variants</p>
+              <ListField label="Sizes" value={draft.sizes || []} onChange={(v) => set('sizes', v)} placeholder="XS, S, M — comma or Enter" />
+              <ListField label="Colours" value={draft.colors || []} onChange={(v) => set('colors', v)} placeholder="Black, Ivory…" hint="Known names (Black, White, Ivory, Navy, Tan, Grey…) get a matching swatch" />
+            </section>
+
+            <section className="space-y-4">
+              <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400">Details</p>
+              <Field label="Fabric"><Input value={draft.fabric || ''} onChange={(e) => set('fabric', e.target.value)} placeholder="100% Cotton" /></Field>
+              <ListField label="Highlights" value={draft.highlights || []} onChange={(v) => set('highlights', v)} placeholder="Add a highlight and press Enter" />
+              <ListField label="Care" value={draft.care || []} onChange={(v) => set('care', v)} placeholder="Machine wash cold…" />
+            </section>
+
+            <section className="space-y-4">
+              <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400">Inventory</p>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Stock"><Input type="number" min={0} value={draft.stock ?? 0} onChange={(e) => set('stock', Number(e.target.value))} /></Field>
+                <Field label="Low-stock alert at" hint="Shows “Few left” when sellable units are at or below this"><Input type="number" min={0} value={draft.low_stock_threshold ?? 5} onChange={(e) => set('low_stock_threshold', Number(e.target.value))} /></Field>
+              </div>
+              <Field label="Mark sold out at" hint={`Product shows “Sold out” once stock is at or below this. 0 = sell every unit. Sellable now: ${Math.max(0, (draft.stock ?? 0) - (draft.out_of_stock_threshold ?? 0))}`}>
+                <Input type="number" min={0} value={draft.out_of_stock_threshold ?? 0} onChange={(e) => set('out_of_stock_threshold', Number(e.target.value))} />
+              </Field>
+            </section>
+
+            <section className="space-y-4">
+              <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400">Merchandising</p>
+              <div className="flex flex-col gap-4 border border-black/10 p-4">
+                <Toggle checked={!!draft.is_new_arrival} onChange={(v) => set('is_new_arrival', v)} label="New arrival — “New” tag" />
+                <Toggle checked={!!draft.is_trending} onChange={(v) => set('is_trending', v)} label="Trending — leads the Trending page" />
+                <Toggle checked={!!draft.is_essential} onChange={(v) => set('is_essential', v)} label="Bealuxe — shown on the Bealuxe page" />
+              </div>
+            </section>
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 }

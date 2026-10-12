@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import type { Product } from '@/lib/types';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import CartDrawer from './CartDrawer';
+import Portal from './Portal';
 import { createClient } from '@/lib/supabase/client';
 
 interface SearchSuggestions {
@@ -24,7 +25,15 @@ export default function Navbar() {
   const searchTimer = useRef<number>(0);
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
+  const pathname = usePathname();
   const { setIsCartOpen, cartCount } = useCart();
+
+  useEffect(() => {
+    if (!isSearchOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsSearchOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isSearchOpen]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -37,7 +46,7 @@ export default function Navbar() {
     if (isSearchOpen || isMobileMenuOpen) {
       document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = 'auto';
+      document.body.style.overflow = '';
     }
   }, [isSearchOpen, isMobileMenuOpen]);
 
@@ -67,7 +76,7 @@ export default function Navbar() {
     e.preventDefault();
     if (searchQuery.trim()) {
       setIsSearchOpen(false);
-      router.push(`/shop?q=${searchQuery}`);
+      router.push(`/shop?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 
@@ -79,43 +88,55 @@ export default function Navbar() {
     { name: 'Collections', href: '/collections' },
   ];
 
+  const isActive = (href: string) => pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
+
   return (
     <>
-      <nav className="w-full border-b border-black py-4 px-6 md:px-12 flex justify-between items-center bg-white sticky top-0 z-50">
-        <div className="flex items-center gap-12">
+      <nav className="w-full h-16 border-b border-black px-6 md:px-12 flex justify-between items-center bg-white/95 backdrop-blur-sm sticky top-0 z-50">
+        <div className="flex items-center gap-12 h-full">
           <Link href="/" className="text-2xl font-normal tracking-tighter uppercase font-serif z-50 relative">
             Beabeyond
           </Link>
-          
+
           {/* Desktop Menu - Product Related Only */}
-          <div className="hidden md:flex gap-8 text-xs font-normal uppercase tracking-[0.1em] text-gray-900">
+          <div className="hidden md:flex gap-8 h-full text-xs font-normal uppercase tracking-[0.1em] text-gray-900">
             {navLinks.map(link => (
-              <Link key={link.name} href={link.href} className="hover:text-gray-500 transition-colors">
+              <Link
+                key={link.name}
+                href={link.href}
+                aria-current={isActive(link.href) ? 'page' : undefined}
+                className="group relative flex items-center h-full"
+              >
                 {link.name}
+                <span className={`absolute left-0 right-0 bottom-[-1px] h-px bg-black origin-left transition-transform duration-300 ${isActive(link.href) ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
               </Link>
             ))}
           </div>
         </div>
-        
+
         <div className="flex items-center gap-6 md:gap-8 text-xs font-normal uppercase tracking-[0.1em] text-gray-900">
-          <button onClick={() => setIsSearchOpen(true)} className="hover:text-gray-500 transition-colors">
+          <button onClick={() => setIsSearchOpen(true)} className="hover:opacity-50 transition-opacity">
             Search
           </button>
-          <Link href={user ? '/account' : '/login'} className="hidden md:inline hover:text-gray-500 transition-colors">
+          <Link href={user ? '/account' : '/login'} className="hidden md:inline hover:opacity-50 transition-opacity">
             {user ? 'Account' : 'Sign In'}
           </Link>
-          <button 
+          <button
             onClick={() => setIsCartOpen(true)}
-            className="hover:text-gray-500 transition-colors"
+            className="hover:opacity-50 transition-opacity tabular-nums"
+            aria-label={`Open cart, ${cartCount} items`}
           >
             Cart ({cartCount})
           </button>
-          
-          <button 
-            className="md:hidden z-50 text-xl leading-none"
+
+          <button
+            className="md:hidden z-50 w-6 h-6 flex flex-col justify-center gap-1.5"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isMobileMenuOpen}
           >
-            {isMobileMenuOpen ? '✕' : '☰'}
+            <span className={`block h-px w-full bg-black transition-transform duration-300 ${isMobileMenuOpen ? 'translate-y-[3.5px] rotate-45' : ''}`} />
+            <span className={`block h-px w-full bg-black transition-transform duration-300 ${isMobileMenuOpen ? '-translate-y-[3.5px] -rotate-45' : ''}`} />
           </button>
         </div>
       </nav>
@@ -125,11 +146,12 @@ export default function Navbar() {
 
       {/* Search Overlay */}
       {isSearchOpen && (
-        <div className="fixed inset-0 bg-white z-[60] flex justify-center animate-in fade-in duration-200">
+        <Portal>
+        <div className="fixed inset-0 bg-white z-[60] flex justify-center animate-fade-in overflow-y-auto">
            <div className="relative w-full max-w-3xl mx-auto px-6 pt-24 md:pt-32">
              <div className="flex justify-between items-center mb-8">
-               <span className="text-[10px] uppercase tracking-[0.3em] text-gray-300 font-bold">Search</span>
-               <button onClick={() => setIsSearchOpen(false)} className="text-lg font-light hover:opacity-50 transition-opacity">✕</button>
+               <span className="text-[10px] uppercase tracking-[0.3em] text-gray-400 font-bold">Search</span>
+               <button onClick={() => setIsSearchOpen(false)} className="text-[10px] font-bold uppercase tracking-[0.2em] hover:opacity-50 transition-opacity">Close ✕</button>
              </div>
 
              <form onSubmit={handleSearchSubmit} className="relative">
@@ -270,22 +292,38 @@ export default function Navbar() {
              )}
            </div>
         </div>
+        </Portal>
       )}
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-white z-40 flex flex-col justify-center items-center md:hidden animate-in slide-in-from-right duration-300">
-           <div className="flex flex-col gap-10 text-3xl font-serif font-normal uppercase tracking-tighter text-center">
-              {navLinks.map(link => (
-                <Link key={link.name} href={link.href} onClick={() => setIsMobileMenuOpen(false)}>
-                  {link.name}
-                </Link>
-              ))}
-              <Link href={user ? '/account' : '/login'} onClick={() => setIsMobileMenuOpen(false)} className="text-base font-sans tracking-[0.2em]">
-                {user ? 'Account' : 'Sign In'}
+        <Portal>
+        <div className="fixed inset-x-0 top-16 bottom-0 bg-white z-40 flex flex-col md:hidden animate-fade-in overflow-y-auto">
+          <nav className="flex flex-col border-b border-black">
+            {navLinks.map((link, i) => (
+              <Link
+                key={link.name}
+                href={link.href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-baseline justify-between px-6 py-5 border-t border-black/10 first:border-t-0 animate-fade-up"
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                <span className={`text-3xl font-serif font-normal uppercase tracking-tighter ${isActive(link.href) ? 'text-black' : 'text-black/80'}`}>{link.name}</span>
+                <span className="text-[9px] text-gray-400 tabular-nums">{String(i + 1).padStart(2, '0')}</span>
               </Link>
-           </div>
+            ))}
+          </nav>
+          <div className="grid grid-cols-2 border-b border-black text-[10px] font-bold uppercase tracking-[0.2em]">
+            <Link href={user ? '/account' : '/login'} onClick={() => setIsMobileMenuOpen(false)} className="px-6 py-5 border-r border-black">
+              {user ? 'Account' : 'Sign In'}
+            </Link>
+            <button onClick={() => { setIsMobileMenuOpen(false); setIsCartOpen(true); }} className="px-6 py-5 text-left">
+              Cart ({cartCount})
+            </button>
+          </div>
+          <p className="mt-auto px-6 py-8 text-[9px] text-gray-400 uppercase tracking-[0.3em]">Free shipping over ₹200 · Easy returns</p>
         </div>
+        </Portal>
       )}
     </>
   );
