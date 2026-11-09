@@ -8,9 +8,9 @@ import { getSiteSettings } from '@/lib/admin-db';
 import type { HomepageSection } from '@/lib/types';
 
 const values = [
-  ['Subtraction', 'Every seam, button and pocket has to earn its place. What remains is the essential form.'],
-  ['Monochrome', 'A palette of black, white and stone lets silhouette and texture carry the design.'],
-  ['Longevity', 'Small batches, considered fabrics and construction made to outlast the season.'],
+  ['Subtraction', 'Every curve, stone and clasp has to earn its place. What remains is the essential form.'],
+  ['Everyday Gold', 'Warm gold tones, soft pearls and delicate sparkle that go with everything you own.'],
+  ['Longevity', 'Pieces chosen to be worn, layered and loved for years — not just a season.'],
 ];
 
 export default async function About() {
@@ -37,7 +37,7 @@ export default async function About() {
           crumbs={[{ name: 'About' }]}
           eyebrow={hero?.description || 'Est. 2026'}
           title={hero?.title || 'About Beabeyond'}
-          description={hero?.subtitle || 'A conceptual retail house dedicated to the art of subtraction.'}
+          description={hero?.subtitle || 'Minimal, everyday jewellery designed to be worn, layered and loved.'}
         />
 
         <section className="grid grid-cols-1 lg:grid-cols-2 border-b border-black">
@@ -56,7 +56,7 @@ export default async function About() {
               {content?.title || 'Style is defined not by what you add, but by what you take away.'}
             </p>
             <p className="text-[11px] text-gray-500 uppercase tracking-widest leading-loose max-w-md mb-10">
-              {content?.subtitle || 'Founded in 2026, Beabeyond is a study in monochrome, structure and timeless form.'}
+              {content?.subtitle || 'Founded in 2026, Beabeyond creates minimal, gold-toned jewellery for everyday wear.'}
             </p>
             <Link href={content?.link_url || '/shop'} className="inline-block w-max bg-black text-white border border-black px-10 py-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-colors">
               {content?.link_text || 'Shop The Collection'}

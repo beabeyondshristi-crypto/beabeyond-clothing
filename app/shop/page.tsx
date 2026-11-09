@@ -19,6 +19,7 @@ function ShopContent() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [sortOption, setSortOption] = useState('newest');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [maxPrice, setMaxPrice] = useState(500);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
   const [loading, setLoading] = useState(true);
 
@@ -30,6 +31,9 @@ function ShopContent() {
         if (Array.isArray(data)) {
           setAllProducts(data);
           setFilteredProducts(data);
+          const top = Math.max(500, Math.ceil(Math.max(0, ...data.map((p: Product) => Number(p.price) || 0)) / 100) * 100);
+          setMaxPrice(top);
+          setPriceRange([0, top]);
           const cats = Array.from(new Set(data.map((p: Product) => p.category))) as string[];
           setCategories(cats);
         }
@@ -96,7 +100,7 @@ function ShopContent() {
 
   const clearFilters = () => {
     setSelectedCategory(null);
-    setPriceRange([0, 500]);
+    setPriceRange([0, maxPrice]);
     setSortOption('newest');
     router.push('/shop');
   };
@@ -118,7 +122,7 @@ function ShopContent() {
 
   const queryParam = searchParams.get('q');
   const countFor = (cat: string) => allProducts.filter((p) => p.category === cat).length;
-  const priceFiltered = priceRange[0] > 0 || priceRange[1] < 500;
+  const priceFiltered = priceRange[0] > 0 || priceRange[1] < maxPrice;
   const activeFilters = (selectedCategory ? 1 : 0) + (priceFiltered ? 1 : 0);
   const title = queryParam ? `“${queryParam}”` : selectedCategory || 'All Products';
 
@@ -235,7 +239,7 @@ function ShopContent() {
                    <input
                      type="range"
                      min="0"
-                     max="500"
+                     max={maxPrice}
                      value={priceRange[1]}
                      onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
                      className="w-full accent-black h-0.5 bg-gray-200 appearance-none"
@@ -288,7 +292,7 @@ function ShopContent() {
                  </button>
                )}
                {priceFiltered && (
-                 <button onClick={() => setPriceRange([0, 500])} className="border border-black px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-black hover:text-white transition-colors">
+                 <button onClick={() => setPriceRange([0, maxPrice])} className="border border-black px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-black hover:text-white transition-colors">
                    ₹{priceRange[0]}–₹{priceRange[1]} ✕
                  </button>
                )}

@@ -11,8 +11,8 @@ type SectionType = HomepageSection['section_type'];
 const PAGES: { key: string; name: string; url: string; types: SectionType[]; note: string }[] = [
   { key: 'home', name: 'Homepage', url: '/', types: ['hero_slide', 'editorial', 'category_spotlight', 'newsletter'], note: 'Hero slider, editorial story, category spotlights and newsletter.' },
   { key: 'new-arrivals', name: 'New Arrivals', url: '/new-arrivals', types: ['hero', 'content'], note: 'Full-screen hero and the concept text block.' },
-  { key: 'bealuxe', name: 'Bealuxe', url: '/bealuxe', types: ['content'], note: 'The sticky story panel beside the product grid.' },
-  { key: 'trending', name: 'Trending', url: '/trending', types: ['hero'], note: 'The black “Most Wanted” banner.' },
+  { key: 'bealuxe', name: 'Bealuxe', url: '/bealuxe', types: ['content', 'feature'], note: 'The sticky story panel and the “Complete the look” banner.' },
+  { key: 'trending', name: 'Trending', url: '/trending', types: ['hero', 'content'], note: 'The black “Most Wanted” banner and the quote card.' },
   { key: 'collections', name: 'Collections', url: '/collections', types: ['hero'], note: 'Title and intro above the collection grid.' },
   { key: 'about', name: 'About', url: '/about', types: ['hero', 'content'], note: 'Page intro and the philosophy block.' },
 ];
@@ -41,7 +41,10 @@ function fieldsFor(page: string, type: SectionType): FieldDef[] {
       if (page === 'trending' || page === 'about') return [{ key: 'description', label: 'Eyebrow label' }, { key: 'title', label: 'Title' }, { key: 'subtitle', label: 'Intro text', long: true }];
       if (page === 'collections') return [{ key: 'title', label: 'Title' }, { key: 'subtitle', label: 'Intro text', long: true }];
       return [{ key: 'badge', label: 'Label' }, { key: 'title', label: 'Title' }, { key: 'subtitle', label: 'Intro text', long: true }, { key: 'image_url', label: 'Image' }, { key: 'link_text', label: 'Button text' }];
+    case 'feature':
+      return [{ key: 'badge', label: 'Label' }, { key: 'title', label: 'Title' }, ...link];
     case 'content':
+      if (page === 'trending') return [{ key: 'title', label: 'Quote', long: true }, { key: 'description', label: 'Attribution', hint: 'Shown after a dash, e.g. The Beabeyond Hot List' }];
       return [{ key: 'badge', label: 'Label' }, { key: 'title', label: 'Title' }, { key: 'subtitle', label: 'Body text', long: true }, ...(page === 'new-arrivals' ? [] : [{ key: 'image_url' as const, label: 'Image' }]), ...link];
     default:
       return [{ key: 'title', label: 'Title' }, { key: 'subtitle', label: 'Text', long: true }, { key: 'image_url', label: 'Image' }, ...link];

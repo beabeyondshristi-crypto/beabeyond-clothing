@@ -15,7 +15,7 @@ export default function AuthShell({
   eyebrow,
   title,
   image = 'https://images.unsplash.com/photo-1570653321427-0e4d0c40bb84?auto=format&fit=crop&w=1400&q=80',
-  quote = 'Defined by sharp silhouettes and uncompromising monochrome.',
+  quote = 'Minimal jewellery, designed to be worn, layered and loved.',
   children,
   footer,
 }: AuthShellProps) {
