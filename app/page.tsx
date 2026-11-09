@@ -7,23 +7,28 @@ import Footer from '@/components/Footer';
 import Newsletter from '@/components/Newsletter';
 import { createClient } from '@/lib/supabase/server';
 import { getSiteSettings } from '@/lib/admin-db';
+import type { Product } from '@/lib/types';
+import { mixFreshAndEstablished } from '@/lib/mix';
 
 export default async function Home() {
   const supabase = await createClient();
   const settings = await getSiteSettings();
 
-  const { data: allProducts } = await supabase.from('products').select('*').order('created_at', { ascending: false }).limit(8);
-  const { data: catalogue } = await supabase.from('products').select('category, images').order('created_at', { ascending: false });
-  const categories = Array.from(
-    (catalogue || []).reduce((map, p) => {
+  const { data: catalogue } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+  const allProducts = (catalogue || []) as Product[];
+  const categories = mixFreshAndEstablished(Array.from(
+    allProducts.reduce((map, p) => {
       const entry = map.get(p.category) || { name: p.category, image: p.images?.[0] || '', count: 0 };
       entry.count += 1;
       if (!entry.image && p.images?.[0]) entry.image = p.images[0];
       return map.set(p.category, entry);
     }, new Map<string, { name: string; image: string; count: number }>()).values(),
-  ).slice(0, 5);
-  const newArrivals = (allProducts || []).slice(0, 4);
-  const trending = (allProducts || []).slice(4, 8);
+  )).slice(0, 5);
+  // Driven by the admin flags; fall back to the latest pieces when nothing is flagged
+  const flaggedNew = allProducts.filter((p) => p.is_new_arrival);
+  const newArrivals = mixFreshAndEstablished(flaggedNew.length ? flaggedNew : allProducts).slice(0, 4);
+  const flaggedTrending = allProducts.filter((p) => p.is_trending);
+  const trending = mixFreshAndEstablished(flaggedTrending.length ? flaggedTrending : allProducts.slice(4)).slice(0, 4);
   const { data: sections } = await supabase
     .from('homepage_sections')
     .select('*')

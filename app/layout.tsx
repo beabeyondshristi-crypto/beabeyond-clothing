@@ -17,8 +17,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Beabeyond | Minimalist Fashion",
-  description: "Defined by sharp silhouettes and uncompromising monochrome.",
+  title: "Beabeyond | Minimal Everyday Jewellery",
+  description: "Minimal, gold-toned jewellery designed to be worn, layered and loved.",
 };
 
 import { CartProvider } from "@/context/CartContext";

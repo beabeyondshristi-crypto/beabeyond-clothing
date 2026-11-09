@@ -4,16 +4,20 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
 import { createClient } from '@/lib/supabase/server';
-import type { HomepageSection } from '@/lib/types';
+import type { HomepageSection, Product } from '@/lib/types';
+import { mixFreshAndEstablished } from '@/lib/mix';
 
 export default async function NewArrivals() {
   const supabase = await createClient();
 
   const sectionsRes = await supabase.from('homepage_sections').select('*').eq('page', 'new-arrivals').eq('is_visible', true).order('sort_order');
-  const productsRes = await supabase.from('products').select('*').order('created_at', { ascending: false }).limit(9);
+  const productsRes = await supabase.from('products').select('*').order('created_at', { ascending: false });
 
   const sections = (sectionsRes.data || []) as HomepageSection[];
-  const newProducts = productsRes.data || [];
+  // Products flagged "New Arrival" in admin; fall back to the latest pieces if none are flagged
+  const allProducts = (productsRes.data || []) as Product[];
+  const flagged = allProducts.filter((p) => p.is_new_arrival);
+  const newProducts = mixFreshAndEstablished(flagged.length ? flagged : allProducts.slice(0, 9));
   const hero = sections.find(s => s.section_type === 'hero') || null;
   const content = sections.find(s => s.section_type === 'content') || null;
 
@@ -23,14 +27,18 @@ export default async function NewArrivals() {
 
       <main className="flex-grow">
         <section className="relative h-[calc(100svh-64px)] min-h-[520px] max-h-[900px] w-full border-b border-black overflow-hidden">
-          <Image
-            src={hero?.image_url || 'https://images.unsplash.com/photo-1570653321427-0e4d0c40bb84?auto=format&fit=crop&w=2000&q=80'}
-            alt={hero?.title || 'New Arrivals'}
-            fill
-            className="object-cover object-center animate-hero-zoom"
-            priority
-            unoptimized
-          />
+          {(hero?.image_url || newProducts[0]?.images?.[0]) ? (
+            <Image
+              src={hero?.image_url || newProducts[0].images[0]}
+              alt={hero?.title || 'New Arrivals'}
+              fill
+              className="object-cover object-center animate-hero-zoom"
+              priority
+              unoptimized
+            />
+          ) : (
+            <div className="absolute inset-0 bg-black" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 px-6 pb-12 md:p-16 text-white flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div className="max-w-2xl">
@@ -38,10 +46,10 @@ export default async function NewArrivals() {
                 {(hero?.settings as Record<string, string>)?.badge || 'Collection 01'} — Just In
               </span>
               <h1 className="text-6xl md:text-8xl font-normal font-serif uppercase tracking-tighter leading-[0.85] mb-6 animate-fade-up" style={{ animationDelay: '150ms' }}>
-                {hero?.title || 'New Horizons'}
+                {hero?.title || 'Just Landed'}
               </h1>
               <p className="text-[11px] md:text-xs font-light uppercase tracking-widest leading-loose border-l border-white pl-6 max-w-md animate-fade-up" style={{ animationDelay: '300ms' }}>
-                {hero?.subtitle || 'Embrace the season with structured silhouettes.'}
+                {hero?.subtitle || 'The newest pieces in the jewellery box.'}
               </p>
             </div>
             <a
@@ -63,7 +71,7 @@ export default async function NewArrivals() {
           </div>
           <div className="md:col-span-7 md:col-start-6 reveal">
             <p className="text-lg md:text-2xl font-serif leading-snug text-gray-800 mb-10">
-              {content?.subtitle || 'This season, we explore the duality of soft and hard.'}
+              {content?.subtitle || 'Jewellery designed to be worn every day, layered, stacked and loved.'}
             </p>
             <Link href={content?.link_url || '/shop'} className="text-[10px] font-bold uppercase tracking-[0.2em] border-b border-black pb-1 hover:opacity-50 transition-opacity">
               {content?.link_text || 'View Lookbook'}

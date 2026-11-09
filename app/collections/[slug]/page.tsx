@@ -159,11 +159,10 @@ export default function CollectionPage({ params }: { params: Promise<{ slug: str
           <div className="flex flex-col justify-center px-6 py-16 md:p-24 bg-white order-1 lg:order-2 reveal">
             <span className="text-[9px] font-bold uppercase tracking-[0.4em] mb-6 text-gray-400">Spotlight</span>
             <h2 className="text-4xl md:text-5xl font-serif font-normal uppercase tracking-tighter leading-none mb-8">
-              The {collection.name}<br />Edit.
+              {collection.name}
             </h2>
             <p className="text-[11px] font-light uppercase tracking-widest leading-loose text-gray-500 mb-12 max-w-md">
-              Discover the key pieces that define this season&apos;s {collection.name.toLowerCase()}.
-              Meticulously crafted for the modern wardrobe.
+              {`${String(products.length).padStart(2, "0")} pieces, handpicked for ${collection.name}. Find your favourite and make it yours.`}
             </p>
             <Link
               href="/shop"

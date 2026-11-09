@@ -205,7 +205,7 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
                 <div>
                   <div className="flex justify-between items-baseline mb-4">
                     <span className="text-[10px] font-bold uppercase tracking-widest">Select Size</span>
-                    <span className="text-[9px] uppercase tracking-[0.2em] text-gray-400">True to size</span>
+                    {product.sizes.length > 1 && <span className="text-[9px] uppercase tracking-[0.2em] text-gray-400">True to size</span>}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {product.sizes.map((size) => (

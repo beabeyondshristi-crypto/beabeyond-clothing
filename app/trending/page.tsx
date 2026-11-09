@@ -5,6 +5,7 @@ import ProductCard from '@/components/ProductCard';
 import { createClient } from '@/lib/supabase/server';
 import type { HomepageSection, Product } from '@/lib/types';
 import { isLowStock } from '@/lib/stock';
+import { mixFreshAndEstablished } from '@/lib/mix';
 
 export default async function Trending() {
   const supabase = await createClient();
@@ -14,10 +15,11 @@ export default async function Trending() {
 
   const sections = (sectionsRes.data || []) as HomepageSection[];
   const hero = sections.find(s => s.section_type === 'hero') || null;
+  const quote = sections.find(s => s.section_type === 'content') || null;
   // Products flagged as trending lead the list, the rest fill it out
   const allProducts = (productsRes.data || []) as Product[];
   const trendingProducts = [
-    ...allProducts.filter((p) => p.is_trending),
+    ...mixFreshAndEstablished(allProducts.filter((p) => p.is_trending)),
     ...allProducts.filter((p) => !p.is_trending),
   ].slice(0, 9);
   const [top, ...rest] = trendingProducts;
@@ -80,13 +82,15 @@ export default async function Trending() {
               </div>
             ))}
 
-            <div className="col-span-2 bg-black text-white p-10 md:p-14 flex flex-col justify-center min-h-[320px] reveal">
-              <span className="font-serif text-6xl leading-none text-white/20 mb-4">&ldquo;</span>
-              <p className="font-serif text-2xl md:text-3xl italic leading-snug">
-                The silhouette of the season. Absolute perfection.
-              </p>
-              <span className="mt-6 text-[9px] font-bold uppercase tracking-[0.4em] text-gray-500">— Vogue</span>
-            </div>
+            {quote?.title && (
+              <div className="col-span-2 bg-black text-white p-10 md:p-14 flex flex-col justify-center min-h-[320px] reveal">
+                <span className="font-serif text-6xl leading-none text-white/20 mb-4">&ldquo;</span>
+                <p className="font-serif text-2xl md:text-3xl italic leading-snug">{quote.title}</p>
+                {quote.description && (
+                  <span className="mt-6 text-[9px] font-bold uppercase tracking-[0.4em] text-gray-500">— {quote.description}</span>
+                )}
+              </div>
+            )}
 
             {remaining.slice(2).map((product, i) => (
               <div key={product.id}>
